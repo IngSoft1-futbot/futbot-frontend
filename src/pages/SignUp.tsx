@@ -8,7 +8,7 @@ interface FormData {
   avatar: File | null;
 }
 
-const SignIn = () => {
+const SignUp = () => {
   const [formData, setFormData] = useState<FormData>({
     club: '',
     email: '',
@@ -34,18 +34,31 @@ const SignIn = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log('Form data:', formData);
+
+    if (formData.avatar) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setPreviewImage(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(formData.avatar);
+    }
+
     // Here you would typically send the data to your backend
-    alert('Sign in form submitted!');
+    alert('Registrado satisfactoriamente');
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-center mb-6">Sign In</h2>
-        
+        <h2 className="text-2xl font-bold text-center mb-6">Sign Up</h2>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Club/Username Field */}
           <div>
@@ -142,12 +155,23 @@ const SignIn = () => {
             type="submit"
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
           >
-            Sign In
+            Sign Up
           </button>
         </form>
+        {/* Avatar Preview */}
+        {previewImage && (
+          <div className="mt-4">
+            <p className="text-sm font-medium text-gray-700 mb-1">Avatar Preview:</p>
+            <img
+              src={previewImage}
+              alt="Avatar preview"
+              className="w-32 h-32 object-cover rounded-md border"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default SignIn;
+export default SignUp;
