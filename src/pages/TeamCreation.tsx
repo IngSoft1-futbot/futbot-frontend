@@ -10,9 +10,25 @@ interface Team {
         {
             player_id: number,
             behavior_id: number
+        },
+        {
+            player_id: number,
+            behavior_id: number
+        },
+        {
+            player_id: number,
+            behavior_id: number
         }
     ],
     jugadores_suplentes: [
+        {
+            player_id: number,
+            behavior_id: number
+        },
+        {
+            player_id: number,
+            behavior_id: number
+        },
         {
             player_id: number,
             behavior_id: number
@@ -35,18 +51,13 @@ function TeamCreation() {
 
     const [team, setTeam] = useState<Team>({
         name: 'Mi equipo',
-        jugadores_titulares: [{ player_id: 0, behavior_id: 0 }],
-        jugadores_suplentes: [{ player_id: 0, behavior_id: 0 }]
+        jugadores_titulares: [{ player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }],
+        jugadores_suplentes: [{ player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }]
     });
 
-    function handleRedirect(e: React.MouseEvent) {
-        // Redirect to signup page - this would typically use react-router-dom
-        e.preventDefault();
-        navigate('/Main');
+    const [selectedIds, setSelectedIds] = useState<(number | null)[]>([null, null, null, null, null, null]);
 
-    }
-
-    const [selectedIds, setSelectedIds] = useState<(number | null)[]>([null, null, null]);
+    const [teamName, setTeamName] = useState<(string | '')>();
 
     const handlePlayerSelection = (slot: number, e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value === '' ? null : parseInt(e.target.value);
@@ -59,24 +70,80 @@ function TeamCreation() {
             p => !selectedIds.some((id, i) => i !== slot && id === p.id)
         );
 
-    return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md">
-                <h2 className="text-2xl font-bold text-center mb-6">Crear equipo</h2>
+    function handleTeamNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+        setTeamName(e.target.value);
+    }
 
-                <form>
+    function handleSubmit(e: React.SubmitEvent) {
+        e.preventDefault();
+
+        let newTeam: Team = {
+            name: '',
+            jugadores_titulares: [{ player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }],
+            jugadores_suplentes: [{ player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }]
+        };
+
+        if (teamName !== undefined) {
+            newTeam.name = teamName
+        }
+
+        for (let index = 0; index < selectedIds.length; index++) {
+
+            const element = selectedIds[index];
+
+            if (element !== null) {
+
+                console.log(mockPlayers[element - 1]);
+
+                if (index < 3) {
+                    newTeam.jugadores_titulares[index].player_id = mockPlayers[element - 1].id
+                } else if (index >= 3) {
+                    newTeam.jugadores_suplentes[index - 3].player_id = mockPlayers[element - 1].id
+                } else {
+                    alert('impossible state');
+                }
+
+            }
+
+        }
+
+        console.log(newTeam);
+        alert("Equipo creado satisfactoriamente");
+
+        setTimeout(() => {
+            navigate('/Main');
+        }, 3000)
+
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-100  items-center flex justify-center p-4">
+            <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md">
+                <h2 className="text-2xl font-bold text-center mb-6 ">Crear equipo</h2>
+
+                <form className='flex flex-col' onSubmit={handleSubmit}>
                     <label>
                         Name:
-                        <input type="text" maxLength={20} placeholder="Nombre del equipo" />
+                        <input type="text" required id='teamName' maxLength={20} onChange={handleTeamNameChange} placeholder="Nombre del equipo" />
                     </label>
 
                     <p>Jugadores Titulares:</p>
                     {[0, 1, 2].map(slot => (
-                        <select
+                        <select className='border-red-500'
                             key={slot}
                             value={selectedIds[slot] ?? ''}
                             onChange={e => handlePlayerSelection(slot, e)}
+                            required
                         >
+                            <option value="">Seleccionar jugador</option>
+                            {getOptionsForSlot(slot).map(player => (
+                                <option key={player.id} value={player.id}> {player.name} </option>))}
+                        </select>
+                    ))}
+
+                    <p>Jugadores Suplentes:</p>
+                    {[3, 4, 5].map(slot => (
+                        <select key={slot} value={selectedIds[slot] ?? ''} onChange={e => handlePlayerSelection(slot, e)}>
                             <option value="">Seleccionar jugador</option>
                             {getOptionsForSlot(slot).map(player => (
                                 <option key={player.id} value={player.id}>
@@ -85,9 +152,9 @@ function TeamCreation() {
                             ))}
                         </select>
                     ))}
+                    <button type='submit'> Crear Equipo </button>
                 </form>
 
-                <button onClick={handleRedirect}>Crear Equipo</button>
             </div>
         </div>
     );
