@@ -1,47 +1,12 @@
-import React from 'react';
-import { useState } from 'react';
-import { mockPlayers } from '../api/players';
+import React, { useState, useEffect } from 'react';
+
 import { useNavigate } from 'react-router-dom';
+import type { Behavior } from '../common/behaviorModel';
+import type { Player } from '../common/playerModel';
+import type { Team } from '../common/teamModel'
 
-
-interface Team {
-    name: string,
-    jugadores_titulares: [
-        {
-            player_id: number,
-            behavior_id: number
-        },
-        {
-            player_id: number,
-            behavior_id: number
-        },
-        {
-            player_id: number,
-            behavior_id: number
-        }
-    ],
-    jugadores_suplentes: [
-        {
-            player_id: number,
-            behavior_id: number
-        },
-        {
-            player_id: number,
-            behavior_id: number
-        },
-        {
-            player_id: number,
-            behavior_id: number
-        }
-    ]
-}
-interface Player {
-    id: number,
-    name: string,
-    shirt_number: number | null,
-    pacss: {},
-    team_id: number | null
-}
+import { mockPlayers } from '../api/players';
+import { mockBehaviors } from '../api/behaviours'
 
 function TeamCreation() {
 
@@ -49,26 +14,42 @@ function TeamCreation() {
 
     const [players, setPlayers] = useState<Player[]>(mockPlayers);
 
+    const [selectedIds, setSelectedIds] = useState<(number | null)[]>([null, null, null, null, null, null]);
+
+    const [teamName, setTeamName] = useState<(string | '')>();
+
+    const [behaviors, setBehaviors] = useState<Behavior[]>(mockBehaviors);
+
+    const [selectedBehaviors, setSelectedBehaviors] = useState<(number | null)[]>([null, null, null, null, null, null]);
+
+    
     const [team, setTeam] = useState<Team>({
         name: 'Mi equipo',
         jugadores_titulares: [{ player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }],
         jugadores_suplentes: [{ player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }, { player_id: 0, behavior_id: 0 }]
     });
 
-    const [selectedIds, setSelectedIds] = useState<(number | null)[]>([null, null, null, null, null, null]);
-
-    const [teamName, setTeamName] = useState<(string | '')>();
+    // Log team whenever it changes
+    useEffect(() => {
+        console.log('Team updated:', team);
+    }, [team]);
 
     const handlePlayerSelection = (slot: number, e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value === '' ? null : parseInt(e.target.value);
         setSelectedIds(prev => prev.map((id, i) => (i === slot ? value : id)));
     };
 
-    // players available for a given slot: not picked in any other slot
+    const handleBehaviorSelection = (slot: number, e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value === '' ? null : parseInt(e.target.value);
+        
+        setSelectedBehaviors(prev => prev.map((id, i) => (i === slot ? value : id)));
+    };
+
     const getOptionsForSlot = (slot: number) =>
         players.filter(
             p => !selectedIds.some((id, i) => i !== slot && id === p.id)
         );
+
 
     function handleTeamNameChange(e: React.ChangeEvent<HTMLInputElement>) {
         setTeamName(e.target.value);
@@ -97,17 +78,16 @@ function TeamCreation() {
 
                 if (index < 3) {
                     newTeam.jugadores_titulares[index].player_id = mockPlayers[element - 1].id
-                } else if (index >= 3) {
-                    newTeam.jugadores_suplentes[index - 3].player_id = mockPlayers[element - 1].id
+                    newTeam.jugadores_titulares[index].behavior_id = selectedBehaviors[index] ?? 0;
                 } else {
-                    alert('impossible state');
+                    newTeam.jugadores_suplentes[index - 3].player_id = mockPlayers[element - 1].id
+                    newTeam.jugadores_suplentes[index - 3].behavior_id = selectedBehaviors[index] ?? 0;
                 }
 
             }
 
         }
-
-        console.log(newTeam);
+        setTeam(newTeam);
         alert("Equipo creado satisfactoriamente");
 
         setTimeout(() => {
@@ -127,31 +107,69 @@ function TeamCreation() {
                         <input type="text" required id='teamName' maxLength={20} onChange={handleTeamNameChange} placeholder="Nombre del equipo" />
                     </label>
 
-                    <p>Jugadores Titulares:</p>
-                    {[0, 1, 2].map(slot => (
-                        <select className='border-red-500'
-                            key={slot}
-                            value={selectedIds[slot] ?? ''}
-                            onChange={e => handlePlayerSelection(slot, e)}
-                            required
-                        >
-                            <option value="">Seleccionar jugador</option>
-                            {getOptionsForSlot(slot).map(player => (
-                                <option key={player.id} value={player.id}> {player.name} </option>))}
-                        </select>
-                    ))}
+                    <div className='flex flex-col'>
+                        <p>Jugadores Titulares:</p>
+                        {[0, 1, 2].map(slot => (
+                            <div key={slot}>
+                                
+                                <select 
+                                    className='border-red-500 mb-2'
+                                    value={selectedIds[slot] ?? ''}
+                                    onChange={e => handlePlayerSelection(slot, e)}
+                                    required
+                                >
+                                    <option value="">Seleccionar jugador</option>
+                                    {getOptionsForSlot(slot).map(player => (
+                                        <option key={player.id} value={player.id}> {player.name} </option>))}
+                                </select>
 
-                    <p>Jugadores Suplentes:</p>
-                    {[3, 4, 5].map(slot => (
-                        <select key={slot} value={selectedIds[slot] ?? ''} onChange={e => handlePlayerSelection(slot, e)}>
-                            <option value="">Seleccionar jugador</option>
-                            {getOptionsForSlot(slot).map(player => (
-                                <option key={player.id} value={player.id}>
-                                    {player.name}
-                                </option>
-                            ))}
-                        </select>
-                    ))}
+                                <select 
+                                    value={selectedBehaviors[slot] ?? ''}
+                                    onChange={e => handleBehaviorSelection(slot, e)}
+                                    required
+                                    className="mb-2"
+                                >
+                                    <option value="">Seleccionar Comportamiento</option>
+                                    {behaviors.map(behavior =>
+                                        <option key={behavior.behavior_id} value={behavior.behavior_id}> {behavior.name}</option>
+                                    )}
+                                </select>
+                            </div>
+                        ))}
+                    </div>
+                    <div>
+                        <p>Jugadores Suplentes:</p>
+                        {[3, 4, 5].map(slot => (
+                            <div key={slot}>
+                                
+                                <select 
+                                    className='border-red-500 mb-2'
+                                    value={selectedIds[slot] ?? ''}
+                                    onChange={e => handlePlayerSelection(slot, e)}
+                                    required
+                                >
+                                    <option value="">Seleccionar jugador</option>
+                                    {getOptionsForSlot(slot).map(player => (
+                                        <option key={player.id} value={player.id}>
+                                            {player.name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <select 
+                                    value={selectedBehaviors[slot] ?? ''}
+                                    onChange={e => handleBehaviorSelection(slot, e)}
+                                    required
+                                    className="mb-2"
+                                >
+                                    <option value="">Seleccionar Comportamiento</option>
+                                    {behaviors.map(behavior =>
+                                        <option key={behavior.behavior_id} value={behavior.behavior_id}> {behavior.name}</option>
+                                    )}
+                                </select>
+                            </div>
+                        ))}
+                    </div>
                     <button type='submit'> Crear Equipo </button>
                 </form>
 
