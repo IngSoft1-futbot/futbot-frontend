@@ -55,21 +55,27 @@ const PlayersCreation: React.FC = () => {
     setPlayer((prev) => ({ ...prev, shirt_number: val }));
   }; //!TODO Handle --1 and stuff like that
 
-  const handleAttributeChange = (attr: keyof PacssAttributes, value: number) => {
-    const currentVal = Player.pacss[attr];
-    const diff = value - currentVal;
+  const handleAttributeChange = (attr: keyof PacssAttributes, newValue: number) => {
+  const currentValue = Player.pacss[attr];
 
-    // Verificar que no sobrepase los puntos disponibles ni baje del mínimo
-    if (value < MIN_ATTRIBUTE_VALUE || remainingPoints - diff < 0) return;
+  // Calculo la sobra con los valores actuales
+  const currentTotal = Object.values(Player.pacss).reduce((sum, val) => sum + val, 0);
+  const pointsLeft = TOTAL_POINTS - currentTotal;
 
-    setPlayer((prev) => ({
-      ...prev,
-      pacss: {
-        ...prev.pacss,
-        [attr]: value,
-      },
-    }));
-  };
+  // Máximo que puede alcanzar el slider
+  const maxAllowed = currentValue + pointsLeft;
+
+  // Si presiono al extremo derecho se actualiza al maximo que queda
+  const clampedValue = Math.min(newValue, maxAllowed);
+
+  setPlayer((prev) => ({
+    ...prev,
+    pacss: {
+      ...prev.pacss,
+      [attr]: clampedValue,
+    },
+  }));
+};
 
   const isFormValid =
     Player.name.trim().length > 0 &&
@@ -221,30 +227,30 @@ const pacssLabels: Record<keyof PacssAttributes, string> = {
         </div>
 
         {/* Sliders de Atributos PACSS */}
-        <div className="seccion-atributos flex flex-col space-y-4 pt-2">
-          <p className="etiqueta-campo text-sm font-semibold text-gray-700">
-            Atributos PACSS
-          </p>
+<div className="seccion-atributos flex flex-col space-y-4 pt-2">
+  <p className="etiqueta-campo text-sm font-semibold text-gray-700">
+    Atributos PACSS
+  </p>
 
-          {(Object.keys(Player.pacss) as Array<keyof PacssAttributes>).map((attr) => (
-            <div key={attr} className="filas-atributos flex flex-col space-y-1">
-              <div className="encabezado-slider flex justify-between text-xs font-medium text-gray-600">
-                <span>{pacssLabels[attr]}</span>
-                <span className="valor-atributo font-bold text-gray-800">
-                  {Player.pacss[attr]} pts
-                </span>
-              </div>
-              <input
-                type="range"
-                min={MIN_ATTRIBUTE_VALUE}
-                max={220}
-                value={Player.pacss[attr]}
-                onChange={(e) => handleAttributeChange(attr, parseInt(e.target.value, 10))}
-                className="slider-deslizante w-full accent-blue-600 cursor-pointer h-2 bg-gray-200 rounded-lg"
-              />
-            </div>
-          ))}
-        </div>
+  {(Object.keys(Player.pacss) as Array<keyof PacssAttributes>).map((attr) => (
+    <div key={attr} className="filas-atributos flex flex-col space-y-1">
+      <div className="encabezado-slider flex justify-between text-xs font-medium text-gray-600">
+        <span>{pacssLabels[attr]}</span>
+        <span className="valor-atributo font-bold text-gray-800">
+          {Player.pacss[attr]} pts
+        </span>
+      </div>
+      <input
+        type="range"
+        min={MIN_ATTRIBUTE_VALUE}
+        max={220}
+        value={Player.pacss[attr]}
+        onChange={(e) => handleAttributeChange(attr, parseInt(e.target.value, 10))}
+        className="slider-deslizante w-full accent-blue-600 cursor-pointer h-2 bg-gray-200 rounded-lg"
+      />
+    </div>
+  ))}
+</div>
 
         {/* Botón de submit */}
         <button
