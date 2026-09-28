@@ -1,6 +1,8 @@
 import React from 'react';
 import SignUp from './pages/SignUp';
 import LogIn from './pages/LogIn';
+import TeamCreation from './pages/TeamCreation';
+import PlayersCreation from './pages/PlayersCreation';
 import { Routes, Route, Navigate, BrowserRouter } from 'react-router-dom';
 
 function App() {
@@ -10,6 +12,8 @@ function App() {
         <Route path='/' element={<Navigate to="/SignUp"/>} />
         <Route path='/SignUp' element={<SignUp/>}/>
         <Route path='/LogIn' element={<LogIn/>}/>
+        <Route path='/TeamCreation' element={<TeamCreation/>}/>
+        <Route path='/PlayersCreation' element={<PlayersCreation/>}/>
       </Routes>
     </BrowserRouter>
   );
