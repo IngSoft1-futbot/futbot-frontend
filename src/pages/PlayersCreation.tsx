@@ -304,7 +304,7 @@ const PlayersCreation: React.FC = () => {
                 <input
                   type="range"
                   min={MIN_ATTRIBUTE_VALUE}
-                  max={220}
+                  max={100}
                   value={player.pacss[attr]}
                   onChange={(e) => handleAttributeChange(attr, parseInt(e.target.value, 10))}
                   className="slider-deslizante w-full accent-blue-600 cursor-pointer h-2 bg-gray-200 rounded-lg"
