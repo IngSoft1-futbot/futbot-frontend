@@ -5,5 +5,6 @@ export interface Player {
   name: string;
   shirt_number: number | null;
   pacss: PacssAttributes;
-  team_id: number;
+  team_id: number | null;
+
 }

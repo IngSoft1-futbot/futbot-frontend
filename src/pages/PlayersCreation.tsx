@@ -1,19 +1,48 @@
-import React, { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import type { Player } from '../common/playerModel'
+
 import type { PacssAttributes } from '../common/paccsModel';
+import type { Player } from '../common/playerModel';
 
+import { mockUsers } from '../api/users'
 
 const TOTAL_POINTS = 300;
 const MIN_ATTRIBUTE_VALUE = 20;
 
+
 const PlayersCreation: React.FC = () => {
 
-
   const navigate = useNavigate();
+  const user = mockUsers[1]
+  console.log(user);
 
-  const [Player, setPlayer] = useState<Player>({
+  // Track player creation progress
+  const [playerCount, setPlayerCount] = useState<number>(parseInt(localStorage.getItem('playerCount') ?? '0') );
+  const [maxPlayers, setMaxPlayers] = useState<number>(6);
+
+  useEffect(() => {
+    // Get the current user's player count from localStorage or set default to 0
+    const savedPlayerCount = localStorage.getItem('playerCount');
+    if (savedPlayerCount) {
+      setPlayerCount(parseInt(savedPlayerCount, 10));
+    }
+
+    // Check if this is a first-time login user
+    if (user.first_time_login) {
+      localStorage.setItem('playerCount', '0');
+      setMaxPlayers(6);
+    } else {
+      setMaxPlayers(1); // Regular users can only create 1 player
+    }
+
+    // If it's a first time login and player count is already 6, redirect to main page
+    if (user.first_time_login && savedPlayerCount && parseInt(savedPlayerCount) >= 6) {
+      navigate('/Main');
+    }
+  }, []);
+
+  const [player, setPlayer] = useState<Player>({
     id: 0,
     name: '',
     shirt_number: null,
@@ -24,16 +53,15 @@ const PlayersCreation: React.FC = () => {
       speed: 20,
       strength: 20,
     },
-    team_id: 1
-
+    team_id: null
   }
-  ); //ver como se van a asignar los id de equipos
+  );
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const usedPoints = Object.values(Player.pacss).reduce((acc, curr) => acc + curr, 0);
+  const usedPoints = Object.values(player.pacss).reduce((acc, curr) => acc + curr, 0);
   const remainingPoints = TOTAL_POINTS - usedPoints;
 
   //nombre menor igual a 30 caracteres 
@@ -43,38 +71,43 @@ const PlayersCreation: React.FC = () => {
     setPlayer((prev) => ({ ...prev, [name]: value }));
   };
 
-  
+
   const handleShirtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val: number | null = e.target.value === '' ? null : parseInt(e.target.value, 10);
-    if (val !== null && (val < 0 || val > 99)) return; // Entre 0 y 99
+
+    // Check if the value is a valid positive integer between 0 and 99
+    if (val !== null && (isNaN(val) || val < 0 || val > 99 || !Number.isInteger(val))) {
+      return; // Reject invalid values
+    }
+
     setPlayer((prev) => ({ ...prev, shirt_number: val }));
   }; //!TODO Handle --1 and stuff like that
 
   const handleAttributeChange = (attr: keyof PacssAttributes, newValue: number) => {
-  const currentValue = Player.pacss[attr];
+    const currentValue = player.pacss[attr];
 
-  // Calculo la sobra con los valores actuales
-  const currentTotal = Object.values(Player.pacss).reduce((sum, val) => sum + val, 0);
-  const pointsLeft = TOTAL_POINTS - currentTotal;
+    // Calculo la sobra con los valores actuales
+    const currentTotal = Object.values(player.pacss).reduce((sum, val) => sum + val, 0);
+    const pointsLeft = TOTAL_POINTS - currentTotal;
 
-  // Máximo que puede alcanzar el slider
-  const maxAllowed = currentValue + pointsLeft;
+    // Máximo que puede alcanzar el slider
+    const maxAllowed = currentValue + pointsLeft;
 
-  // Si presiono al extremo derecho se actualiza al maximo que queda
-  const clampedValue = Math.min(newValue, maxAllowed);
+    // Si presiono al extremo derecho se actualiza al maximo que queda
+    const clampedValue = Math.min(newValue, maxAllowed);
 
-  setPlayer((prev) => ({
-    ...prev,
-    pacss: {
-      ...prev.pacss,
-      [attr]: clampedValue,
-    },
-  }));
-};
+    setPlayer((prev) => ({
+      ...prev,
+      pacss: {
+        ...prev.pacss,
+        [attr]: clampedValue,
+      },
+    }));
+  };
 
   const isFormValid =
-    Player.name.trim().length > 0 &&
-    Player.shirt_number !== null &&
+    player.name.trim().length > 0 &&
+    player.shirt_number !== null &&
     remainingPoints === 0;
 
 
@@ -84,28 +117,29 @@ const PlayersCreation: React.FC = () => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!Player.name.trim()){
-        setErrorMessage('Ingrese un nombre válido.');
-        return;
+
+    if (!player.name.trim()) {
+      setErrorMessage('Ingrese un nombre válido.');
+      return;
     }
 
-    if (Player.shirt_number === null){
-        setErrorMessage('Ingrese un número de camiseta entre (0-99).');
-        return;
+    if (player.shirt_number === null) {
+      setErrorMessage('Ingrese un número de camiseta entre (0-99).');
+      return;
     }
 
-    if (remainingPoints !== 0){
-        setErrorMessage('Debes asignar los ${TOTAL_POINTS} puntos disponibles.');
-        return;
+    if (remainingPoints !== 0) {
+      setErrorMessage('Debes asignar los ${TOTAL_POINTS} puntos disponibles.');
+      return;
     }
 
     if (!isFormValid) return;
 
-    const requestBody ={
-        name: Player.name,
-        shirt_number: Number(Player.shirt_number),
-        paccs_attribute: Player.pacss,
-        team_id: Player.team_id
+    const requestBody = {
+      name: player.name,
+      shirt_number: Number(player.shirt_number),
+      paccs_attribute: player.pacss,
+      team_id: player.team_id
     };
 
 
@@ -128,7 +162,7 @@ const PlayersCreation: React.FC = () => {
     setIsSubmitting(true);
 
       setSuccessMessage('¡Jugador creado satisfactoriamente! (Modo Mock)');
-    //Primeras dos lineas del try mockeadas para caso exitoso
+      //Primeras dos lineas del try mockeadas para caso exitoso
       setIsSubmitting(true);
       const userId = 1; // ID de usuario según auth modificar según corresponda
 
@@ -142,6 +176,7 @@ const PlayersCreation: React.FC = () => {
 
       if (response.status === 201) {
         setSuccessMessage('¡Jugador creado satisfactoriamente!');
+
       } else {
         const errorData = await response.json().catch(() => null);
         setErrorMessage(errorData?.detail || 'No pudimos crear el jugador. Parámetros inválidos.');
@@ -153,126 +188,145 @@ const PlayersCreation: React.FC = () => {
     } */
   }; 
 
-const pacssLabels: Record<keyof PacssAttributes, string> = {
+  const pacssLabels: Record<keyof PacssAttributes, string> = {
     power: 'Potencia (Power)',
     agility: 'Agilidad (Agility)',
     control: 'Control (Control)',
     speed: 'Velocidad (Speed)',
     strength: 'Fuerza (Strength)',
   };
-  
-  
- return (
-  
-  <div className="pantalla-principal min-h-screen bg-gray-100 flex items-center justify-center p-4">
-    <div className="tarjeta-formulario bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-      
-      <h1 className="titulo-pagina text-2xl font-bold text-center mb-6" style={{ color: '#27135e', opacity: 0.8 }}>
-  Crear Jugador
-</h1>
 
-      {/* Cartel de Error */}
-      {errorMessage && (
-        <div className="mensaje-error bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 text-sm">
-          {errorMessage}
-        </div>
-      )}
+  // Calculate progress percentage
+  const progressPercentage = Math.min(100, (playerCount / maxPlayers) * 100);
 
-      {/* Cartel de Éxito */}
-      {successMessage && (
-        <div className="mensaje-exito bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4 text-sm">
-          {successMessage}
-        </div>
-      )}
+  return (
 
-      <form onSubmit={handleSubmit} className="formulario flex flex-col space-y-5">
-        
-        {/* Campo Nombre */}
-        <div className="campo-entrada flex flex-col space-y-1">
-          <label className="etiqueta-campo text-sm font-semibold text-gray-700">
-            Nombre
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={Player.name}
-            onChange={handleTextChange}
-            placeholder="Ej: Lionel Messi"
-            required
-            className="input-texto px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          />
-          <span className="contador-caracteres text-xs text-gray-400 text-right">
-            {Player.name.length}/30
-          </span>
-        </div>
+    <div className="pantalla-principal min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="tarjeta-formulario bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
 
-        {/* Campo Número de Camiseta */}
-        <div className="campo-entrada flex flex-col space-y-1">
-          <label className="etiqueta-campo text-sm font-semibold text-gray-700">
-            Número de Camiseta (0 - 99)
-          </label>
-          <input
-            type="number"
-            name="shirt_number"
-            value={Player.shirt_number ?? ''}
-            onChange={handleShirtChange}
-            placeholder="Ej: 10"
-            required
-            min={0}
-            max={99}
-            className="input-numero px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          />
-        </div>
+        <h1 className="titulo-pagina text-2xl font-bold text-center mb-6" style={{ color: '#27135e', opacity: 0.8 }}>
+          Crear Jugador
+        </h1>
 
-        {/* Panel Contador de Puntos */}
-        <div className="caja-puntos-restantes bg-blue-50 border border-blue-200 rounded-md p-3 text-center">
-          <p className="subtitulo-puntos text-xs text-blue-600 uppercase font-semibold">
-            Puntos Disponibles
-          </p>
-          <p className="numero-puntos text-xl font-bold text-blue-800">
-            {remainingPoints} <span className="puntos-totales text-sm font-normal text-gray-500">/ {TOTAL_POINTS}</span>
-          </p>
-        </div>
+        {/* Progress bar for first-time users */}
+        {user.first_time_login && (
+          <div className="mb-4">
+            <div className="text-sm font-medium text-gray-700 mb-1">
+              Progreso de creación: {playerCount}/{maxPlayers} jugadores
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-500 ease-in-out"
+                style={{ width: `${progressPercentage}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
 
-        {/* Sliders de Atributos PACSS */}
-<div className="seccion-atributos flex flex-col space-y-4 pt-2">
-  <p className="etiqueta-campo text-sm font-semibold text-gray-700">
-    Atributos PACSS
-  </p>
+        {/* Cartel de Error */}
+        {errorMessage && (
+          <div className="mensaje-error bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4 text-sm">
+            {errorMessage}
+          </div>
+        )}
 
-  {(Object.keys(Player.pacss) as Array<keyof PacssAttributes>).map((attr) => (
-    <div key={attr} className="filas-atributos flex flex-col space-y-1">
-      <div className="encabezado-slider flex justify-between text-xs font-medium text-gray-600">
-        <span>{pacssLabels[attr]}</span>
-        <span className="valor-atributo font-bold text-gray-800">
-          {Player.pacss[attr]} pts
-        </span>
+        {/* Cartel de Éxito */}
+        {successMessage && (
+          <div className="mensaje-exito bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md mb-4 text-sm">
+            {successMessage}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="formulario flex flex-col space-y-5">
+
+          {/* Campo Nombre */}
+          <div className="campo-entrada flex flex-col space-y-1">
+            <label className="etiqueta-campo text-sm font-semibold text-gray-700">
+              Nombre
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={player.name}
+              onChange={handleTextChange}
+              placeholder="Ej: Lionel Messi"
+              required
+              className="input-texto px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <span className="contador-caracteres text-xs text-gray-400 text-right">
+              {player.name.length}/30
+            </span>
+          </div>
+
+          {/* Campo Número de Camiseta */}
+          <div className="campo-entrada flex flex-col space-y-1">
+            <label className="etiqueta-campo text-sm font-semibold text-gray-700">
+              Número de Camiseta (0 - 99)
+            </label>
+            <input
+              type="number"
+              name="shirt_number"
+              value={player.shirt_number ?? ''}
+              onChange={handleShirtChange}
+              placeholder="Ej: 10"
+              required
+              min={0}
+              max={99}
+              maxLength={2}
+              className="input-numero px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+          </div>
+
+          {/* Panel Contador de Puntos */}
+          <div className="caja-puntos-restantes bg-blue-50 border border-blue-200 rounded-md p-3 text-center">
+            <p className="subtitulo-puntos text-xs text-blue-600 uppercase font-semibold">
+              Puntos Disponibles
+            </p>
+            <p className="numero-puntos text-xl font-bold text-blue-800">
+              {remainingPoints} <span className="puntos-totales text-sm font-normal text-gray-500">/ {TOTAL_POINTS}</span>
+            </p>
+          </div>
+
+          {/* Sliders de Atributos PACSS */}
+          <div className="seccion-atributos flex flex-col space-y-4 pt-2">
+            <p className="etiqueta-campo text-sm font-semibold text-gray-700">
+              Atributos PACSS
+            </p>
+
+            {(Object.keys(player.pacss) as Array<keyof PacssAttributes>).map((attr) => (
+              <div key={attr} className="filas-atributos flex flex-col space-y-1">
+                <div className="encabezado-slider flex justify-between text-xs font-medium text-gray-600">
+                  <span>{pacssLabels[attr]}</span>
+                  <span className="valor-atributo font-bold text-gray-800">
+                    {player.pacss[attr]} pts
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={MIN_ATTRIBUTE_VALUE}
+                  max={220}
+                  value={player.pacss[attr]}
+                  onChange={(e) => handleAttributeChange(attr, parseInt(e.target.value, 10))}
+                  className="slider-deslizante w-full accent-blue-600 cursor-pointer h-2 bg-gray-200 rounded-lg"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Botón de submit */}
+          <button
+            type="submit"
+            disabled={!isFormValid || isSubmitting}
+            className="boton-crear-jugador w-full mt-4 bg-blue-600 text-white font-semibold py-2.5 px-4 rounded-md transition-colors duration-200 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Guardando...' : 'Crear Jugador'}
+          </button>
+
+        </form>
       </div>
-      <input
-        type="range"
-        min={MIN_ATTRIBUTE_VALUE}
-        max={220}
-        value={Player.pacss[attr]}
-        onChange={(e) => handleAttributeChange(attr, parseInt(e.target.value, 10))}
-        className="slider-deslizante w-full accent-blue-600 cursor-pointer h-2 bg-gray-200 rounded-lg"
-      />
     </div>
-  ))}
-</div>
-
-        {/* Botón de submit */}
-        <button
-          type="submit"
-          disabled={!isFormValid || isSubmitting}
-          className="boton-crear-jugador w-full mt-4 bg-blue-600 text-white font-semibold py-2.5 px-4 rounded-md transition-colors duration-200 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? 'Guardando...' : 'Crear Jugador'}
-        </button>
-
-      </form>
-    </div>
-  </div>
-);}
+  );
+}
 
 
 export default PlayersCreation;
