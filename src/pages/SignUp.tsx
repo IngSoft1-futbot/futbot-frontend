@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 interface FormData {
   club: string;
@@ -10,9 +9,6 @@ interface FormData {
 }
 
 const SignUp = () => {
-
-  const navigate = useNavigate();
-
   const [formData, setFormData] = useState<FormData>({
     club: '',
     email: '',
@@ -56,9 +52,6 @@ const SignUp = () => {
 
     // Here you would typically send the data to your backend
     alert('Registrado satisfactoriamente');
-    setTimeout(() => {
-      navigate('/LogIn')
-    },3000)
   };
 
   return (
