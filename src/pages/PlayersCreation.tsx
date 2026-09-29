@@ -110,18 +110,6 @@ const PlayersCreation: React.FC = () => {
     player.shirt_number !== null &&
     remainingPoints === 0;
 
-  const handleFirstTimePlayerCreation = () => {
-    const playerCount = localStorage.getItem('playerCount');
-    if (playerCount !== null) {
-      if (parseInt(playerCount) < 6) {
-        // Redirect to PlayersCreation page
-        navigate('/PlayersCreation');
-      } else {
-        // All players created, redirect to main page
-        navigate('/Main');
-      }
-    }
-  }
 
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
@@ -160,16 +148,18 @@ const PlayersCreation: React.FC = () => {
     if (playerCount !== null) {
       const playerCountInt = parseInt(playerCount)
       localStorage.setItem('playerCount',`${playerCountInt + 1}`)
-      if(playerCountInt > 6){
+      if(playerCountInt == 5){
           alert("Se han creado exitosamente 6 jugadores");
           setTimeout(()=>{
-            navigate('/Main')
+            navigate('/TeamCreation')
           },3000)
       }
     }
 
-    /* try {
-      setIsSubmitting(true);
+  
+
+  /* try {
+    setIsSubmitting(true);
 
       setSuccessMessage('¡Jugador creado satisfactoriamente! (Modo Mock)');
       //Primeras dos lineas del try mockeadas para caso exitoso
@@ -196,7 +186,7 @@ const PlayersCreation: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     } */
-  };
+  }; 
 
   const pacssLabels: Record<keyof PacssAttributes, string> = {
     power: 'Potencia (Power)',
