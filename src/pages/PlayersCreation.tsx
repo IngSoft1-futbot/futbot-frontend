@@ -1,25 +1,20 @@
 import React, { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 
-interface PacssAttributes {
-  power: number;
-  agility: number;
-  control: number;
-  speed: number;
-  strength: number;
-}
+import type { Player } from '../common/playerModel'
+import type { PacssAttributes } from '../common/paccsModel';
 
-interface Player {
-  name: string;
-  shirt_number: number | null;
-  pacss: PacssAttributes;
-  team_id: number;
-}
 
 const TOTAL_POINTS = 300;
 const MIN_ATTRIBUTE_VALUE = 20;
 
 const PlayersCreation: React.FC = () => {
+
+
+  const navigate = useNavigate();
+
   const [Player, setPlayer] = useState<Player>({
+    id: 0,
     name: '',
     shirt_number: null,
     pacss: {
@@ -82,7 +77,9 @@ const PlayersCreation: React.FC = () => {
     Player.shirt_number !== null &&
     remainingPoints === 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+
+
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -112,11 +109,22 @@ const PlayersCreation: React.FC = () => {
     };
 
 
-  console.log('[MOCK] Formulario enviado con éxito:', requestBody);
+    console.log('[MOCK] Formulario enviado con éxito:', requestBody);
+    const playerCount = localStorage.getItem('playerCount');
+    if (playerCount !== null) {
+      const playerCountInt = parseInt(playerCount)
+      localStorage.setItem('playerCount',`${playerCountInt + 1}`)
+      if(playerCountInt == 5){
+          alert("Se han creado exitosamente 6 jugadores");
+          setTimeout(()=>{
+            navigate('/TeamCreation')
+          },3000)
+      }
+    }
 
   
 
-  try {
+  /* try {
     setIsSubmitting(true);
 
       setSuccessMessage('¡Jugador creado satisfactoriamente! (Modo Mock)');
@@ -142,7 +150,7 @@ const PlayersCreation: React.FC = () => {
       setErrorMessage('No pudimos crear jugador. Intentá nuevamente en unos minutos.');
     } finally {
       setIsSubmitting(false);
-    }
+    } */
   }; 
 
 const pacssLabels: Record<keyof PacssAttributes, string> = {
