@@ -16,6 +16,8 @@ function App() {
         <Route path='/LogIn' element={<LogIn />} />
         <Route path='/TeamCreation' element={<TeamCreation />} />
         <Route path='/Main' element={<MainPage />} />
+        <Route path='/PlayersCreation' element={<PlayersCreation />} />
+
       </Routes>
     </BrowserRouter>
   );
