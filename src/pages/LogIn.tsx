@@ -28,47 +28,37 @@ const LogIn = () => {
     const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // Here you would typically send the data to your backend
-
-
         try {
-      const response = await fetch(`http://127.0.0.1:8000/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+            const response = await fetch(`http://127.0.0.1:8000/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
 
-      if (response.status === 200) {
-            alert("Login exitoso")
-            navigate('/PlayersCreation')
-      }else if(response.status === 401){
-            const errorData = await response.json()
-            alert("Error al iniciar sesion: " + errorData.detail)
-      }
+            if (response.status === 200) {
+                const responseData = await response.json();
+                // Save the token to localStorage
+                localStorage.setItem('access_token', responseData.data.access_token);
+                alert("Login exitoso")
+                navigate('/PlayersCreation')
+            } else if (response.status === 401) {
+                const errorData = await response.json()
+                alert("Error al iniciar sesion: " + errorData.detail)
+            }
 
-    } catch (exception) {
-      console.error(exception);
-      alert('Se ha producido un error ' + exception);
-    }
+        } catch (exception) {
+            console.error(exception);
+            alert('Se ha producido un error ' + exception);
+        }
 
-
-        /* alert('Log in form submitted!')
-        e.preventDefault();
-        setTimeout(() => {
-            navigate('/PlayersCreation')
-        },3000) 
-        ;
-    }; */
 
         function handleRedirect(e: React.MouseEvent) {
             e.preventDefault();
             navigate('/SignUp');
 
         }
-
-
 
         return (
             <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
