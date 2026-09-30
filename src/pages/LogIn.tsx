@@ -44,75 +44,79 @@ const LogIn = () => {
                 alert("Login exitoso")
                 navigate('/PlayersCreation')
             } else if (response.status === 401) {
+
+                alert("Acceso no autorizado");
+                
+            } else {
                 const errorData = await response.json()
-                alert("Error al iniciar sesion: " + errorData.detail)
+                alert("Error al iniciar sesion: \n" + errorData.detail[0].msg)
             }
 
         } catch (exception) {
+
             console.error(exception);
-            alert('Se ha producido un error ' + exception);
         }
 
+    }
+    function handleRedirect(e: React.MouseEvent) {
+        e.preventDefault();
+        navigate('/SignUp');
 
-        function handleRedirect(e: React.MouseEvent) {
-            e.preventDefault();
-            navigate('/SignUp');
+    }
 
-        }
+    return (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md">
+                <h2 className="text-2xl font-bold text-center mb-6">Log In</h2>
 
-        return (
-            <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md">
-                    <h2 className="text-2xl font-bold text-center mb-6">Log In</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Email Field */}
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                            Email
+                        </label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your email"
+                        />
+                    </div>
 
-                        {/* Email Field */}
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleInputChange}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Enter your email"
-                            />
-                        </div>
+                    {/* Password Field */}
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                            Password
+                        </label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your password"
+                        />
+                    </div>
 
-                        {/* Password Field */}
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                                Password
-                            </label>
-                            <input
-                                type="password"
-                                id="password"
-                                name="password"
-                                value={formData.password}
-                                onChange={handleInputChange}
-                                required
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Enter your password"
-                            />
-                        </div>
-
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
-                        >
-                            Log In
-                        </button>
-                    </form>
-                    <button onClick={handleRedirect}>Sin cuenta?</button>
-                </div>
+                    {/* Submit Button */}
+                    <button
+                        type="submit"
+                        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                    >
+                        Log In
+                    </button>
+                </form>
+                <button onClick={handleRedirect}>Sin cuenta?</button>
             </div>
-        );
-    };
-}
+        </div>
+    );
+};
+
 export default LogIn;
