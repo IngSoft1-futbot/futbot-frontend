@@ -40,7 +40,7 @@ const SignUp = () => {
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log('Form data:', formData);
 
@@ -54,12 +54,36 @@ const SignUp = () => {
       reader.readAsDataURL(formData.avatar);
     }
 
-    // Here you would typically send the data to your backend
-    alert('Registrado satisfactoriamente');
-    setTimeout(() => {
-      navigate('/LogIn')
-    },3000)
-  };
+    try {
+
+      const response = await fetch(`http://127.0.0.1:8000/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.status === 201) {
+        alert('Usuario creado satisfactoriamente!');
+
+        setTimeout(() => {
+          navigate('/LogIn')
+        }, 3000);
+
+      } else if (response.status == 400) {
+        alert("Email o nombre de usuario ya en uso")
+      }
+
+      else {
+        const errorData = await response.json().catch(() => null);
+        alert("Se ha producido un error:" + errorData.detail[0].msg)
+      }
+    } catch (error) {
+      console.log(error)
+    }
+
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
