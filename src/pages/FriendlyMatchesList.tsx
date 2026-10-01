@@ -19,9 +19,9 @@ const FriendlyMatchesList: React.FC = () => {
   const currentUser = mockUsers[1]; 
   const currentUserId = `user_${currentUser.user_id}`;
 
-  // Estado inicial de partidos
+  // Partidos disponibles (mock data)
   const [matches, setMatches] = useState<FriendlyMatch[]>([
-    {//partido disponible para unirse
+    {
       id: 1,
       creatorClub: 'Boca Juniors',
       teamName: 'Xeneize FC',
@@ -29,7 +29,7 @@ const FriendlyMatchesList: React.FC = () => {
       guestUserId: null,
       status: 'waiting',
     },
-    {//partido ya empezado
+    {//partido en progreso
       id: 2,
       creatorClub: 'River Plate',
       teamName: 'Millonarios',
@@ -47,7 +47,7 @@ const FriendlyMatchesList: React.FC = () => {
 
   // Verificar si el usuario actual tiene una sala activa creada
   const hasCreatedRoom = Boolean(matches.find(m => m.creatorId === currentUserId && m.status !== 'finished'));
-  // Verificar si el usuario actual está jugando en alguna sala
+  // Verificar si el usuario actual está participando en algún partido activo
   const userActiveMatch = matches.find(
     m => (m.creatorId === currentUserId || m.guestUserId === currentUserId) && m.status !== 'finished'
   );
@@ -97,10 +97,9 @@ const FriendlyMatchesList: React.FC = () => {
     e.preventDefault();
     if (!selectedTeamName || hasCreatedRoom) return;
 
-    //Creación de sala de partido amistoso
     const newMatch: FriendlyMatch = {
       id: Date.now(),
-      creatorClub: 'Mi Club FC',
+      creatorClub: 'Mi Club FC', // Reemplazar con el club de la sesión
       teamName: selectedTeamName,
       creatorId: currentUserId,
       guestUserId: null,
@@ -121,6 +120,7 @@ const FriendlyMatchesList: React.FC = () => {
       )
     );
 
+    // Los participantes van a la vista de jugador
     navigate(`/match/${matchId}`);
   };
 
@@ -164,9 +164,11 @@ const FriendlyMatchesList: React.FC = () => {
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
+                  {/* Información del Partido */}
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-lg text-gray-900">{match.teamName}</span>
+                      {/* Nombre del Club */}
+                      <span className="font-bold text-xl text-gray-900">{match.creatorClub}</span>
                       {isOwner && (
                         <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
                           Tu Sala
@@ -178,14 +180,15 @@ const FriendlyMatchesList: React.FC = () => {
                         </span>
                       )}
                     </div>
+                    {/* Nombre del Equipo */}
                     <p className="text-sm text-gray-600">
-                      <strong>Club:</strong> {match.creatorClub}
+                      <strong>Equipo:</strong> {match.teamName}
                     </p>
                   </div>
 
-                  {/* Lógica de botones */}
+                  {/* Acciones de Botones */}
                   <div>
-                    {/* Caso 1: Creador esperando que se una alguien */}
+                    {/* Creador esperando que se una alguien */}
                     {isOwner && !isInProgress && (
                       <button
                         disabled
@@ -196,17 +199,23 @@ const FriendlyMatchesList: React.FC = () => {
                       </button>
                     )}
 
-                    {/* Caso 2: El partido ya está en juego (para participantes o espectadores terceros) */}
+                    {/* Partido en curso- listo para verlo */}
                     {isInProgress && (
                       <button
-                        onClick={() => navigate(`/match/${match.id}`)}
+                        onClick={() => {
+                          if (isParticipant) {
+                            navigate(`/match/${match.id}`);
+                          } else {
+                            navigate(`/watch-match/${match.id}`);
+                          }
+                        }}
                         className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-purple-700 transition-colors shadow-sm"
                       >
                         {isParticipant ? 'Ir al Partido' : 'Ver Partido'}
                       </button>
                     )}
 
-                    {/* Caso 3: Sala disponible para unirse (solo si el usuario actual no tiene una sala activa) */}
+                    {/* Sala abierta para unirse */}
                     {!isOwner && !isInProgress && (
                       <button
                         onClick={() => handleJoinMatch(match.id)}
