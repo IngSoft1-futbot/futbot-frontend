@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import type { Team } from '../common/teamModel';
 import { mockUsers } from '../api/users';
 
+// Definición de la interfaz FriendlyMatch para representar un partido amistoso
 interface FriendlyMatch {
-  id: number;
-  creatorClub: string;
-  teamName: string;
+  roomId: number;
+  ownerName: string; // Nombre del Club
+  teamName: string; 
   creatorId: string;
-  guestUserId?: string | null;
+  guestUserId: string | null;
   status: 'waiting' | 'in_progress' | 'finished';
 }
 
@@ -22,16 +23,16 @@ const FriendlyMatchesList: React.FC = () => {
   // Partidos disponibles (mock data)
   const [matches, setMatches] = useState<FriendlyMatch[]>([
     {
-      id: 1,
-      creatorClub: 'Boca Juniors',
+      roomId: 1,
+      ownerName: 'Boca Juniors',
       teamName: 'Xeneize FC',
       creatorId: 'user_99',
       guestUserId: null,
       status: 'waiting',
     },
-    {//partido en progreso
-      id: 2,
-      creatorClub: 'River Plate',
+    {
+      roomId: 2,
+      ownerName: 'River Plate',
       teamName: 'Millonarios',
       creatorId: 'user_88',
       guestUserId: 'user_77',
@@ -45,7 +46,7 @@ const FriendlyMatchesList: React.FC = () => {
   const [selectedTeamName, setSelectedTeamName] = useState<string>('');
   const [isLoadingTeams, setIsLoadingTeams] = useState(false);
 
-  // Verificar si el usuario actual tiene una sala activa creada
+  // Verificar si el usuario actual tiene una sala activa creada (esperando o jugando)
   const hasCreatedRoom = Boolean(matches.find(m => m.creatorId === currentUserId && m.status !== 'finished'));
   // Verificar si el usuario actual está participando en algún partido activo
   const userActiveMatch = matches.find(
@@ -98,8 +99,8 @@ const FriendlyMatchesList: React.FC = () => {
     if (!selectedTeamName || hasCreatedRoom) return;
 
     const newMatch: FriendlyMatch = {
-      id: Date.now(),
-      creatorClub: 'Mi Club FC', // Reemplazar con el club de la sesión
+      roomId: Date.now(),
+      ownerName: 'Mi Club FC',
       teamName: selectedTeamName,
       creatorId: currentUserId,
       guestUserId: null,
@@ -111,17 +112,21 @@ const FriendlyMatchesList: React.FC = () => {
     setShowModal(false);
   };
 
-  const handleJoinMatch = (matchId: number) => {
+  const handleCancelRoom = (roomId: number) => {
+    // Elimina la sala de la lista (en prod haría un DELETE al backend)
+    setMatches(prev => prev.filter(match => match.roomId !== roomId));
+  };
+
+  const handleJoinMatch = (roomId: number) => {
     setMatches(prev =>
       prev.map(match =>
-        match.id === matchId
+        match.roomId === roomId
           ? { ...match, guestUserId: currentUserId, status: 'in_progress' }
           : match
       )
     );
 
-    // Los participantes van a la vista de jugador
-    navigate(`/match/${matchId}`);
+    navigate(`/match/${roomId}`);
   };
 
   return (
@@ -155,9 +160,12 @@ const FriendlyMatchesList: React.FC = () => {
               const isParticipant = isOwner || isGuest;
               const isInProgress = match.status === 'in_progress';
 
+              // Bloquear ver partido si el usuario ya creó una sala
+              const canWatch = !hasCreatedRoom || isParticipant;
+
               return (
                 <div
-                  key={match.id}
+                  key={match.roomId}
                   className={`border rounded-lg p-4 flex justify-between items-center transition-colors ${
                     isOwner
                       ? 'bg-blue-50 border-blue-200'
@@ -167,8 +175,7 @@ const FriendlyMatchesList: React.FC = () => {
                   {/* Información del Partido */}
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      {/* Nombre del Club */}
-                      <span className="font-bold text-xl text-gray-900">{match.creatorClub}</span>
+                      <span className="font-bold text-xl text-gray-900">{match.ownerName}</span>
                       {isOwner && (
                         <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
                           Tu Sala
@@ -180,36 +187,46 @@ const FriendlyMatchesList: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    {/* Nombre del Equipo */}
                     <p className="text-sm text-gray-600">
                       <strong>Equipo:</strong> {match.teamName}
                     </p>
                   </div>
 
                   {/* Acciones de Botones */}
-                  <div>
-                    {/* Creador esperando que se una alguien */}
+                  <div className="flex items-center space-x-2">
+                    {/* Creador esperando oponente + Botón Cancelar */}
                     {isOwner && !isInProgress && (
-                      <button
-                        disabled
-                        className="bg-amber-100 text-amber-700 border border-amber-300 px-4 py-2 rounded-md text-sm font-semibold cursor-not-allowed flex items-center space-x-2"
-                      >
-                        <span className="animate-pulse h-2 w-2 bg-amber-500 rounded-full"></span>
-                        <span>Esperando oponente...</span>
-                      </button>
+                      <>
+                        <div className="bg-amber-100 text-amber-700 border border-amber-300 px-4 py-2 rounded-md text-sm font-semibold flex items-center space-x-2">
+                          <span className="animate-pulse h-2 w-2 bg-amber-500 rounded-full"></span>
+                          <span>Esperando oponente...</span>
+                        </div>
+                        <button
+                          onClick={() => handleCancelRoom(match.roomId)}
+                          className="bg-red-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-red-700 transition-colors shadow-sm"
+                          title="Cancelar Sala"
+                        >
+                          Cancelar
+                        </button>
+                      </>
                     )}
 
-                    {/* Partido en curso- listo para verlo */}
+                    {/* Partido en curso listo para ver (No se puede cancelar) */}
                     {isInProgress && (
                       <button
                         onClick={() => {
                           if (isParticipant) {
-                            navigate(`/match/${match.id}`);
-                          } else {
-                            navigate(`/watch-match/${match.id}`);
+                            navigate(`/match/${match.roomId}`);
+                          } else if (canWatch) {
+                            navigate(`/watch-match/${match.roomId}`);
                           }
                         }}
-                        className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-purple-700 transition-colors shadow-sm"
+                        disabled={!canWatch}
+                        className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors shadow-sm ${
+                          canWatch
+                            ? 'bg-purple-600 text-white hover:bg-purple-700'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
                       >
                         {isParticipant ? 'Ir al Partido' : 'Ver Partido'}
                       </button>
@@ -218,7 +235,7 @@ const FriendlyMatchesList: React.FC = () => {
                     {/* Sala abierta para unirse */}
                     {!isOwner && !isInProgress && (
                       <button
-                        onClick={() => handleJoinMatch(match.id)}
+                        onClick={() => handleJoinMatch(match.roomId)}
                         disabled={Boolean(userActiveMatch)}
                         className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
                           userActiveMatch
