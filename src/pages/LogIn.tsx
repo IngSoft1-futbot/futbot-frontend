@@ -39,17 +39,24 @@ const LogIn = () => {
 
             if (response.status === 200) {
                 const responseData = await response.json();
-                // Save the token to localStorage
-                localStorage.setItem('access_token', responseData.data.access_token);
+                localStorage.setItem('access_token', responseData.access_token);
+                localStorage.setItem('token_type', 'bearer');
                 alert("Login exitoso")
                 navigate('/PlayersCreation')
+
             } else if (response.status === 401) {
 
                 alert("Acceso no autorizado");
-                
+
+            } else if (response.status === 422) {
+                const errorData = await response.json()
+
+                alert("Error al iniciar sesion: \n" + errorData.detail[0].msg);
+
             } else {
                 const errorData = await response.json()
-                alert("Error al iniciar sesion: \n" + errorData.detail[0].msg)
+
+                alert("Error al iniciar sesion: \n" + errorData.detail)
             }
 
         } catch (exception) {
