@@ -1,50 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
-
-import type { PacssAttributes } from '../common/paccsModel';
-import type { Player } from '../common/playerModel';
-
-import { mockUsers } from '../api/users'
+import type { PacssAttributes } from "../common/paccsModel";
+import type { Player } from "../common/playerModel";
+import { jwtDecode } from "jwt-decode";
 
 const TOTAL_POINTS = 300;
 const MIN_ATTRIBUTE_VALUE = 20;
 
-
 const PlayersCreation: React.FC = () => {
-
   const navigate = useNavigate();
-  const user = mockUsers[1]
-  console.log(user);
 
   // Track player creation progress
-  const [playerCount, setPlayerCount] = useState<number>(parseInt(localStorage.getItem('playerCount') ?? '0') );
+  const [playerCount, setPlayerCount] = useState<number>(
+    parseInt(localStorage.getItem("playerCount") ?? "0"),
+  );
   const [maxPlayers, setMaxPlayers] = useState<number>(6);
 
   useEffect(() => {
     // Get the current user's player count from localStorage or set default to 0
-    const savedPlayerCount = localStorage.getItem('playerCount');
+    const savedPlayerCount = localStorage.getItem("playerCount");
     if (savedPlayerCount) {
       setPlayerCount(parseInt(savedPlayerCount, 10));
     }
 
     // Check if this is a first-time login user
-    if (user.first_time_login) {
-      localStorage.setItem('playerCount', '0');
+    if (playerCount == 0) {
       setMaxPlayers(6);
     } else {
       setMaxPlayers(1); // Regular users can only create 1 player
     }
 
     // If it's a first time login and player count is already 6, redirect to main page
-    if (user.first_time_login && savedPlayerCount && parseInt(savedPlayerCount) >= 6) {
-      navigate('/Main');
+    if (localStorage.getItem("firstTimer") == "true" && playerCount >= 6) {
+      localStorage.removeItem("firstTimer");
+      navigate("/Main");
     }
   }, []);
 
   const [player, setPlayer] = useState<Player>({
     id: 0,
-    name: '',
+    name: "",
     shirt_number: null,
     pacss: {
       power: 20,
@@ -53,41 +49,52 @@ const PlayersCreation: React.FC = () => {
       speed: 20,
       strength: 20,
     },
-    team_id: null
-  }
-  );
+    team_id: null,
+  });
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const usedPoints = Object.values(player.pacss).reduce((acc, curr) => acc + curr, 0);
+  const usedPoints = Object.values(player.pacss).reduce(
+    (acc, curr) => acc + curr,
+    0,
+  );
   const remainingPoints = TOTAL_POINTS - usedPoints;
 
-  //nombre menor igual a 30 caracteres 
+  //nombre menor igual a 30 caracteres
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    if (name === 'name' && value.length > 30) return;
+    if (name === "name" && value.length > 30) return;
     setPlayer((prev) => ({ ...prev, [name]: value }));
   };
 
-
   const handleShirtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val: number | null = e.target.value === '' ? null : parseInt(e.target.value, 10);
+    const val: number | null =
+      e.target.value === "" ? null : parseInt(e.target.value, 10);
 
     // Check if the value is a valid positive integer between 0 and 99
-    if (val !== null && (isNaN(val) || val < 0 || val > 99 || !Number.isInteger(val))) {
+    if (
+      val !== null &&
+      (isNaN(val) || val < 0 || val > 99 || !Number.isInteger(val))
+    ) {
       return; // Reject invalid values
     }
 
     setPlayer((prev) => ({ ...prev, shirt_number: val }));
-  }; //!TODO Handle --1 and stuff like that
+  };
 
-  const handleAttributeChange = (attr: keyof PacssAttributes, newValue: number) => {
+  const handleAttributeChange = (
+    attr: keyof PacssAttributes,
+    newValue: number,
+  ) => {
     const currentValue = player.pacss[attr];
 
     // Calculo la sobra con los valores actuales
-    const currentTotal = Object.values(player.pacss).reduce((sum, val) => sum + val, 0);
+    const currentTotal = Object.values(player.pacss).reduce(
+      (sum, val) => sum + val,
+      0,
+    );
     const pointsLeft = TOTAL_POINTS - currentTotal;
 
     // Máximo que puede alcanzar el slider
@@ -110,26 +117,29 @@ const PlayersCreation: React.FC = () => {
     player.shirt_number !== null &&
     remainingPoints === 0;
 
-
-
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      setErrorMessage("Tu sesión expiró. Iniciá sesión nuevamente.");
+      return;
+    }
 
     if (!player.name.trim()) {
-      setErrorMessage('Ingrese un nombre válido.');
+      setErrorMessage("Ingrese un nombre válido.");
       return;
     }
 
     if (player.shirt_number === null) {
-      setErrorMessage('Ingrese un número de camiseta entre (0-99).');
+      setErrorMessage("Ingrese un número de camiseta entre (0-99).");
       return;
     }
 
     if (remainingPoints !== 0) {
-      setErrorMessage('Debes asignar los ${TOTAL_POINTS} puntos disponibles.');
+      setErrorMessage(`Debes asignar los ${TOTAL_POINTS} puntos disponibles.`);
       return;
     }
 
@@ -138,78 +148,88 @@ const PlayersCreation: React.FC = () => {
     const requestBody = {
       name: player.name,
       shirt_number: Number(player.shirt_number),
-      paccs_attribute: player.pacss,
-      team_id: player.team_id
+      pacss_attributes: player.pacss,
+      team_id: player.team_id,
     };
 
-
-    console.log('[MOCK] Formulario enviado con éxito:', requestBody);
-    const playerCount = localStorage.getItem('playerCount');
-    if (playerCount !== null) {
-      const playerCountInt = parseInt(playerCount)
-      localStorage.setItem('playerCount',`${playerCountInt + 1}`)
-      if(playerCountInt == 5){
-          alert("Se han creado exitosamente 6 jugadores");
-          setTimeout(()=>{
-            navigate('/TeamCreation')
-          },3000)
-      }
+    let userId: number;
+    try {
+      userId = parseInt(jwtDecode(token).sub ?? "-1");
+      console.log(jwtDecode(token));
+      if (Number.isNaN(userId)) throw new Error("sub inválido");
+    } catch {
+      setErrorMessage("Sesión inválida. Iniciá sesión nuevamente.");
+      return;
     }
 
-  
-
-  /* try {
-    setIsSubmitting(true);
-
-      setSuccessMessage('¡Jugador creado satisfactoriamente! (Modo Mock)');
-      //Primeras dos lineas del try mockeadas para caso exitoso
+    try {
       setIsSubmitting(true);
-      const userId = 1; // ID de usuario según auth modificar según corresponda
 
-      const response = await fetch(`http://127.0.0.1:8000/users/${userId}/players`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      setSuccessMessage("¡Jugador creado satisfactoriamente!");
+      setIsSubmitting(true);
+
+      const response = await fetch(
+        `http://127.0.0.1:8000/users/${userId}/players`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(requestBody),
         },
-        body: JSON.stringify(requestBody),
-      });
+      );
 
       if (response.status === 201) {
-        setSuccessMessage('¡Jugador creado satisfactoriamente!');
-
+        setSuccessMessage("¡Jugador creado satisfactoriamente!");
       } else {
-        const errorData = await response.json().catch(() => null);
-        setErrorMessage(errorData?.detail || 'No pudimos crear el jugador. Parámetros inválidos.');
+        const data = await response.json();
+        setErrorMessage(
+          typeof data.detail === "string"
+            ? data.detail
+            : "No pudimos crear el jugador. Parámetros inválidos.",
+        );
+
+        const newCount = playerCount + 1;
+        localStorage.setItem("playerCount", String(newCount));
+        setPlayerCount(newCount);
+        if (localStorage.getItem("firstTimer") === "true" && newCount >= 6) {
+          localStorage.removeItem("firstTimer");
+          navigate("/Main");
+        }
       }
     } catch (error) {
-      setErrorMessage('No pudimos crear jugador. Intentá nuevamente en unos minutos.');
+      setErrorMessage(
+        "No pudimos crear jugador. Intentá nuevamente en unos minutos.",
+      );
     } finally {
       setIsSubmitting(false);
-    } */
-  }; 
+    }
+  };
 
   const pacssLabels: Record<keyof PacssAttributes, string> = {
-    power: 'Potencia (Power)',
-    agility: 'Agilidad (Agility)',
-    control: 'Control (Control)',
-    speed: 'Velocidad (Speed)',
-    strength: 'Fuerza (Strength)',
+    power: "Potencia (Power)",
+    agility: "Agilidad (Agility)",
+    control: "Control (Control)",
+    speed: "Velocidad (Speed)",
+    strength: "Fuerza (Strength)",
   };
 
   // Calculate progress percentage
   const progressPercentage = Math.min(100, (playerCount / maxPlayers) * 100);
 
   return (
-
     <div className="pantalla-principal min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="tarjeta-formulario bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-
-        <h1 className="titulo-pagina text-2xl font-bold text-center mb-6" style={{ color: '#27135e', opacity: 0.8 }}>
+        <h1
+          className="titulo-pagina text-2xl font-bold text-center mb-6"
+          style={{ color: "#27135e", opacity: 0.8 }}
+        >
           Crear Jugador
         </h1>
 
         {/* Progress bar for first-time users */}
-        {user.first_time_login && (
+        {localStorage.getItem("firsTimer") && (
           <div className="mb-4">
             <div className="text-sm font-medium text-gray-700 mb-1">
               Progreso de creación: {playerCount}/{maxPlayers} jugadores
@@ -237,8 +257,10 @@ const PlayersCreation: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="formulario flex flex-col space-y-5">
-
+        <form
+          onSubmit={handleSubmit}
+          className="formulario flex flex-col space-y-5"
+        >
           {/* Campo Nombre */}
           <div className="campo-entrada flex flex-col space-y-1">
             <label className="etiqueta-campo text-sm font-semibold text-gray-700">
@@ -266,7 +288,7 @@ const PlayersCreation: React.FC = () => {
             <input
               type="number"
               name="shirt_number"
-              value={player.shirt_number ?? ''}
+              value={player.shirt_number ?? ""}
               onChange={handleShirtChange}
               placeholder="Ej: 10"
               required
@@ -283,7 +305,10 @@ const PlayersCreation: React.FC = () => {
               Puntos Disponibles
             </p>
             <p className="numero-puntos text-xl font-bold text-blue-800">
-              {remainingPoints} <span className="puntos-totales text-sm font-normal text-gray-500">/ {TOTAL_POINTS}</span>
+              {remainingPoints}{" "}
+              <span className="puntos-totales text-sm font-normal text-gray-500">
+                / {TOTAL_POINTS}
+              </span>
             </p>
           </div>
 
@@ -293,24 +318,31 @@ const PlayersCreation: React.FC = () => {
               Atributos PACSS
             </p>
 
-            {(Object.keys(player.pacss) as Array<keyof PacssAttributes>).map((attr) => (
-              <div key={attr} className="filas-atributos flex flex-col space-y-1">
-                <div className="encabezado-slider flex justify-between text-xs font-medium text-gray-600">
-                  <span>{pacssLabels[attr]}</span>
-                  <span className="valor-atributo font-bold text-gray-800">
-                    {player.pacss[attr]} pts
-                  </span>
+            {(Object.keys(player.pacss) as Array<keyof PacssAttributes>).map(
+              (attr) => (
+                <div
+                  key={attr}
+                  className="filas-atributos flex flex-col space-y-1"
+                >
+                  <div className="encabezado-slider flex justify-between text-xs font-medium text-gray-600">
+                    <span>{pacssLabels[attr]}</span>
+                    <span className="valor-atributo font-bold text-gray-800">
+                      {player.pacss[attr]} pts
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={MIN_ATTRIBUTE_VALUE}
+                    max={100}
+                    value={player.pacss[attr]}
+                    onChange={(e) =>
+                      handleAttributeChange(attr, parseInt(e.target.value, 10))
+                    }
+                    className="slider-deslizante w-full accent-blue-600 cursor-pointer h-2 bg-gray-200 rounded-lg"
+                  />
                 </div>
-                <input
-                  type="range"
-                  min={MIN_ATTRIBUTE_VALUE}
-                  max={100}
-                  value={player.pacss[attr]}
-                  onChange={(e) => handleAttributeChange(attr, parseInt(e.target.value, 10))}
-                  className="slider-deslizante w-full accent-blue-600 cursor-pointer h-2 bg-gray-200 rounded-lg"
-                />
-              </div>
-            ))}
+              ),
+            )}
           </div>
 
           {/* Botón de submit */}
@@ -319,14 +351,12 @@ const PlayersCreation: React.FC = () => {
             disabled={!isFormValid || isSubmitting}
             className="boton-crear-jugador w-full mt-4 bg-blue-600 text-white font-semibold py-2.5 px-4 rounded-md transition-colors duration-200 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Guardando...' : 'Crear Jugador'}
+            {isSubmitting ? "Guardando..." : "Crear Jugador"}
           </button>
-
         </form>
       </div>
     </div>
   );
-}
-
+};
 
 export default PlayersCreation;
