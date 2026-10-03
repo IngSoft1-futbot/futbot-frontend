@@ -46,9 +46,11 @@ const LogIn = () => {
 
             } else if (response.status === 401) {
 
-                alert("Acceso no autorizado");
+                alert("Email o contraseña incorrectos");
 
-            } else if (response.status === 422) {
+            }else if (response.status === 422) {
+
+                alert("Email o contraseña son invalidos");
                 const errorData = await response.json()
 
                 alert("Error al iniciar sesion: \n" + errorData.detail[0].msg);
