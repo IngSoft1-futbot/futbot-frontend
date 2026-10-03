@@ -40,7 +40,6 @@ const LogIn = () => {
             if (response.status === 200) {
                 const responseData = await response.json();
                 localStorage.setItem('access_token', responseData.access_token);
-                localStorage.setItem('token_type', 'bearer');
                 alert("Login exitoso")
                 navigate('/PlayersCreation')
 
