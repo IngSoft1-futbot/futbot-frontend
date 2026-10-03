@@ -50,9 +50,6 @@ const LogIn = () => {
             }else if (response.status === 422) {
 
                 alert("Email o contraseña son invalidos");
-                const errorData = await response.json()
-
-                alert("Error al iniciar sesion: \n" + errorData.detail[0].msg);
 
             } else {
                 const errorData = await response.json()
