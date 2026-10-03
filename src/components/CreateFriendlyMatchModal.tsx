@@ -1,23 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import type { Team } from '../common/teamModel';
 
-// Definir las Props que recibirá el modal desde la vista contenedora
+export interface CreateRoomData {
+  teamId: number;
+  durationMinutes: number;
+}
+
+interface TeamFromBackend {
+  team_id: number;
+  name: string;
+}
+
 interface CreateFriendlyMatchModalProps {
   isOpen: boolean;
+  userId: number;
+  token: string;
   onClose: () => void;
-  onCreateMatch: (selectedTeamName: string) => void;
+  onCreateMatch: (data: CreateRoomData) => Promise<void>;
 }
 
 export const CreateFriendlyMatchModal: React.FC<CreateFriendlyMatchModalProps> = ({
   isOpen,
+  userId,
+  token,
   onClose,
   onCreateMatch,
 }) => {
-  const [userTeams, setUserTeams] = useState<Team[]>([]);
-  const [selectedTeamName, setSelectedTeamName] = useState<string>('');
+  const [userTeams, setUserTeams] = useState<TeamFromBackend[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [durationMinutes, setDurationMinutes] = useState<number>(2);
   const [isLoadingTeams, setIsLoadingTeams] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Cada vez que se abra el modal, consultamos los equipos del usuario
   useEffect(() => {
     if (isOpen) {
       fetchUserTeams();
@@ -26,53 +40,58 @@ export const CreateFriendlyMatchModal: React.FC<CreateFriendlyMatchModalProps> =
 
   const fetchUserTeams = async () => {
     setIsLoadingTeams(true);
+    setErrorMessage(null);
     try {
-      setTimeout(() => {
-        const mockFetchedTeams: Team[] = [
-          {
-            name: 'Barcelona',
-            jugadores_titulares: [{ player_id: 1, behavior_id: 1 }, { player_id: 2, behavior_id: 1 }, { player_id: 3, behavior_id: 1 }],
-            jugadores_suplentes: [{ player_id: 4, behavior_id: 1 }, { player_id: 5, behavior_id: 1 }, { player_id: 6, behavior_id: 1 }]
-          },
-          {
-            name: 'Boca',
-            jugadores_titulares: [{ player_id: 7, behavior_id: 1 }, { player_id: 8, behavior_id: 1 }, { player_id: 9, behavior_id: 1 }],
-            jugadores_suplentes: [{ player_id: 10, behavior_id: 1 }, { player_id: 11, behavior_id: 1 }, { player_id: 12, behavior_id: 1 }]
-          },
-          {
-            name: 'River',
-            jugadores_titulares: [{ player_id: 13, behavior_id: 1 }, { player_id: 14, behavior_id: 1 }, { player_id: 15, behavior_id: 1 }],
-            jugadores_suplentes: [{ player_id: 16, behavior_id: 1 }, { player_id: 17, behavior_id: 1 }, { player_id: 18, behavior_id: 1 }]
-          },
-          {
-            name: 'Velez',
-            jugadores_titulares: [{ player_id: 19, behavior_id: 1 }, { player_id: 20, behavior_id: 1 }, { player_id: 21, behavior_id: 1 }],
-            jugadores_suplentes: [{ player_id: 22, behavior_id: 1 }, { player_id: 23, behavior_id: 1 }, { player_id: 24, behavior_id: 1 }]
-          }
-        ];
-        setUserTeams(mockFetchedTeams);
-        setIsLoadingTeams(false);
-      }, 300);
-    } catch (error) {
-      console.error("Error al obtener equipos:", error);
+      const response = await fetch(`http://localhost:8000/users/${userId}/teams`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudieron cargar los equipos.");
+      }
+
+      const data = await response.json();
+      setUserTeams(data);
+      if (data.length > 0) {
+        setSelectedTeamId(data[0].team_id);
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message || "Error al conectar con el servidor.");
+    } finally {
       setIsLoadingTeams(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTeamName) return;
+    if (!selectedTeamId) return;
 
-    // Ejecuta el callback enviando el equipo seleccionado
-    onCreateMatch(selectedTeamName);
+    setIsSubmitting(true);
+    setErrorMessage(null);
 
-    // Resetea y cierra
-    setSelectedTeamName('');
-    onClose();
+    try {
+      await onCreateMatch({
+        teamId: selectedTeamId,
+        durationMinutes,
+      });
+
+      setSelectedTeamId(null);
+      setDurationMinutes(2);
+      onClose();
+    } catch (error: any) {
+      setErrorMessage(error.message || "No se pudo crear la sala.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
-    setSelectedTeamName('');
+    setSelectedTeamId(null);
+    setDurationMinutes(2);
+    setErrorMessage(null);
     onClose();
   };
 
@@ -81,34 +100,40 @@ export const CreateFriendlyMatchModal: React.FC<CreateFriendlyMatchModalProps> =
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 className="text-xl font-bold mb-4 text-gray-800">Seleccionar Equipo</h3>
+        <h3 className="text-xl font-bold mb-4 text-gray-800">Crear Sala de Partido Amistoso</h3>
+
+        {errorMessage && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
+            {errorMessage}
+          </div>
+        )}
 
         {isLoadingTeams ? (
           <p className="text-center text-gray-500 py-4">Cargando tus equipos...</p>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Equipos disponibles del club:
+                Selecciona tu Equipo:
               </label>
 
               {userTeams.length === 0 ? (
                 <p className="text-sm text-red-500">No tienes equipos creados. Crea uno primero.</p>
               ) : (
-                <div className="border rounded-md divide-y divide-gray-200 max-h-48 overflow-y-auto">
-                  {userTeams.map((team, idx) => (
+                <div className="border rounded-md divide-y divide-gray-200 max-h-40 overflow-y-auto">
+                  {userTeams.map(team => (
                     <label
-                      key={idx}
+                      key={team.team_id}
                       className={`flex items-center p-3 cursor-pointer transition-colors ${
-                        selectedTeamName === team.name ? 'bg-blue-50' : 'hover:bg-gray-50'
+                        selectedTeamId === team.team_id ? 'bg-blue-50' : 'hover:bg-gray-50'
                       }`}
                     >
                       <input
                         type="radio"
                         name="selectedTeam"
-                        value={team.name}
-                        checked={selectedTeamName === team.name}
-                        onChange={e => setSelectedTeamName(e.target.value)}
+                        value={team.team_id}
+                        checked={selectedTeamId === team.team_id}
+                        onChange={() => setSelectedTeamId(team.team_id)}
                         className="text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="ml-3 font-medium text-gray-800">{team.name}</span>
@@ -118,20 +143,40 @@ export const CreateFriendlyMatchModal: React.FC<CreateFriendlyMatchModalProps> =
               )}
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Duración del partido (minutos):
+              </label>
+              <select
+                value={durationMinutes}
+                onChange={e => setDurationMinutes(Number(e.target.value))}
+                className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
+              >
+                <option value={2}>2 Minutos</option>
+                <option value={3}>3 Minutos</option>
+                <option value={4}>4 Minutos</option>
+                <option value={5}>5 Minutos</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                La duración seleccionada aplicará para el encuentro.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4 border-t">
               <button
                 type="button"
                 onClick={handleClose}
+                disabled={isSubmitting}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm font-medium"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                disabled={!selectedTeamName}
+                disabled={!selectedTeamId || isSubmitting}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                Crear Sala
+                {isSubmitting ? 'Creando...' : 'Crear Sala'}
               </button>
             </div>
           </form>

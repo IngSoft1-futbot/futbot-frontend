@@ -1,86 +1,113 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { mockUsers } from '../api/users';
-import { CreateFriendlyMatchModal } from '../components/CreateFriendlyMatchModal';
+import { CreateFriendlyMatchModal, type CreateRoomData } from '../components/CreateFriendlyMatchModal';
 
-// Definición de la interfaz FriendlyMatch
 interface FriendlyMatch {
-  roomId: number;
-  ownerName: string; // Nombre del Club
-  teamName: string; 
-  creatorId: string;
-  guestUserId: string | null;
-  status: 'waiting' | 'in_progress' | 'finished';
+  id_match: number;
+  home_team_id: number;
+  home_team_name?: string;
+  creator_name?: string;
+  creator_id?: number;
+  match_duration: number;
+  away_team_id: number | null;
+  status: 'open' | 'started' | 'finished' | 'cancelled';
 }
+
+const API_BASE_URL = 'http://localhost:8000';
 
 const FriendlyMatchesList: React.FC = () => {
   const navigate = useNavigate();
 
-  // Usuario logueado actual
-  const currentUser = mockUsers[1]; 
-  const currentUserId = `user_${currentUser.user_id}`;
+  const token = localStorage.getItem('token') || '';
+  const currentUserId = Number(localStorage.getItem('user_id')) || 1;
 
-  // Partidos disponibles (mock data)
-  const [matches, setMatches] = useState<FriendlyMatch[]>([
-    {
-      roomId: 1,
-      ownerName: 'Boca Juniors',
-      teamName: 'Xeneize FC',
-      creatorId: 'user_99',
-      guestUserId: null,
-      status: 'waiting',
-    },
-    {
-      roomId: 2,
-      ownerName: 'River Plate',
-      teamName: 'Millonarios',
-      creatorId: 'user_88',
-      guestUserId: 'user_77',
-      status: 'in_progress',
-    },
-  ]);
-
-  // Estado para visibilidad del modal de creación
+  const [matches, setMatches] = useState<FriendlyMatch[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Verificar si el usuario actual tiene una sala activa creada (esperando o jugando)
-  const hasCreatedRoom = Boolean(matches.find(m => m.creatorId === currentUserId && m.status !== 'finished'));
-  
-  // Verificar si el usuario actual está participando en algún partido activo
-  const userActiveMatch = matches.find(
-    m => (m.creatorId === currentUserId || m.guestUserId === currentUserId) && m.status !== 'finished'
+  // Buscar si el usuario actual ya creó una sala que esté abierta
+  const myCreatedMatch = matches.find(
+    m => m.creator_id === currentUserId && m.status === 'open'
   );
 
-  // Recibe la respuesta del modal cuando se crea una sala con éxito
-  const handleCreateRoom = (selectedTeamName: string) => {
-    if (hasCreatedRoom) return;
-
-    const newMatch: FriendlyMatch = {
-      roomId: Date.now(),
-      ownerName: 'Mi Club FC',
-      teamName: selectedTeamName,
-      creatorId: currentUserId,
-      guestUserId: null,
-      status: 'waiting',
-    };
-
-    setMatches(prev => [...prev, newMatch]);
+  const fetchFriendlyMatches = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/friendly-matches`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMatches(data);
+      }
+    } catch (error) {
+      console.error("Error cargando partidos amistosos:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleCancelRoom = (roomId: number) => {
-    setMatches(prev => prev.filter(match => match.roomId !== roomId));
+  useEffect(() => {
+    fetchFriendlyMatches();
+    const interval = setInterval(fetchFriendlyMatches, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleCreateRoom = async (data: CreateRoomData) => {
+    const response = await fetch(`${API_BASE_URL}/friendly-matches`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        home_team_id: data.teamId,
+        match_duration: data.durationMinutes,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Error al crear la sala.");
+    }
+
+    await fetchFriendlyMatches();
   };
 
-  const handleJoinMatch = (roomId: number) => {
-    setMatches(prev =>
-      prev.map(match =>
-        match.roomId === roomId
-          ? { ...match, guestUserId: currentUserId, status: 'in_progress' }
-          : match
-      )
-    );
+  const handleCancelRoom = async (matchId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/friendly-matches/${matchId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-    navigate(`/match/${roomId}`);
+      if (response.ok) {
+        setMatches(prev => prev.filter(match => match.id_match !== matchId));
+      }
+    } catch (error) {
+      console.error("Error al cancelar la sala:", error);
+    }
+  };
+
+  const handleJoinMatch = async (matchId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/friendly-matches/${matchId}/join`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        navigate(`/match/${data.id_match || matchId}`);
+      }
+    } catch (error) {
+      console.error("Error al unirse al partido:", error);
+    }
   };
 
   return (
@@ -96,39 +123,32 @@ const FriendlyMatchesList: React.FC = () => {
           </button>
         </div>
 
-        {hasCreatedRoom && (
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-md">
-            Ya has creado una sala. Estás esperando a que un oponente se una.
-          </div>
-        )}
-
-        {matches.length === 0 ? (
+        {isLoading ? (
+          <p className="text-center text-gray-500 py-8">Cargando salas...</p>
+        ) : matches.length === 0 ? (
           <p className="text-center text-gray-500 py-8">
             No hay partidos disponibles. ¡Crea una sala abajo!
           </p>
         ) : (
           <div className="grid gap-4 mb-8">
             {matches.map(match => {
-              const isOwner = match.creatorId === currentUserId;
-              const isGuest = match.guestUserId === currentUserId;
-              const isParticipant = isOwner || isGuest;
-              const isInProgress = match.status === 'in_progress';
-
-              const canWatch = !hasCreatedRoom || isParticipant;
+              const isOwner = match.creator_id === currentUserId;
+              const isInProgress = match.status === 'started';
 
               return (
                 <div
-                  key={match.roomId}
-                  className={`border rounded-lg p-4 flex justify-between items-center transition-colors ${
+                  key={match.id_match}
+                  className={`border rounded-lg p-5 flex justify-between items-center transition-colors ${
                     isOwner
                       ? 'bg-blue-50 border-blue-200'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
-                  {/* Información del Partido */}
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-bold text-xl text-gray-900">{match.ownerName}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-3">
+                      <span className="font-bold text-xl text-gray-900">
+                        {match.creator_name || `Creador #${match.home_team_id}`}
+                      </span>
                       {isOwner && (
                         <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
                           Tu Sala
@@ -140,58 +160,22 @@ const FriendlyMatchesList: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">
-                      <strong>Equipo:</strong> {match.teamName}
-                    </p>
+
+                    <div className="flex items-center space-x-8 text-sm text-gray-600 pt-1">
+                      <p>
+                        <strong className="text-gray-800">Equipo:</strong> {match.home_team_name || `Equipo ID #${match.home_team_id}`}
+                      </p>
+                      <p>
+                        <strong className="text-gray-800">Duración:</strong> {match.match_duration} min
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Acciones de Botones */}
                   <div className="flex items-center space-x-2">
-                    {isOwner && !isInProgress && (
-                      <>
-                        <div className="bg-amber-100 text-amber-700 border border-amber-300 px-4 py-2 rounded-md text-sm font-semibold flex items-center space-x-2">
-                          <span className="animate-pulse h-2 w-2 bg-amber-500 rounded-full"></span>
-                          <span>Esperando oponente...</span>
-                        </div>
-                        <button
-                          onClick={() => handleCancelRoom(match.roomId)}
-                          className="bg-red-600 text-white px-3 py-2 rounded-md text-sm font-semibold hover:bg-red-700 transition-colors shadow-sm"
-                          title="Cancelar Sala"
-                        >
-                          Cancelar
-                        </button>
-                      </>
-                    )}
-
-                    {isInProgress && (
-                      <button
-                        onClick={() => {
-                          if (isParticipant) {
-                            navigate(`/match/${match.roomId}`);
-                          } else if (canWatch) {
-                            navigate(`/watch-match/${match.roomId}`);
-                          }
-                        }}
-                        disabled={!canWatch}
-                        className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors shadow-sm ${
-                          canWatch
-                            ? 'bg-purple-600 text-white hover:bg-purple-700'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                      >
-                        {isParticipant ? 'Ir al Partido' : 'Ver Partido'}
-                      </button>
-                    )}
-
                     {!isOwner && !isInProgress && (
                       <button
-                        onClick={() => handleJoinMatch(match.roomId)}
-                        disabled={Boolean(userActiveMatch)}
-                        className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
-                          userActiveMatch
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
+                        onClick={() => handleJoinMatch(match.id_match)}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-semibold transition-colors"
                       >
                         Unirse
                       </button>
@@ -206,24 +190,61 @@ const FriendlyMatchesList: React.FC = () => {
         <div className="border-t pt-6 flex justify-center">
           <button
             onClick={() => setShowModal(true)}
-            disabled={hasCreatedRoom}
+            disabled={Boolean(myCreatedMatch)}
             className={`w-full sm:w-auto py-3 px-6 rounded-md font-semibold transition-colors duration-200 shadow-sm ${
-              hasCreatedRoom
+              myCreatedMatch
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
             }`}
           >
-            {hasCreatedRoom ? 'Ya tienes una sala activa' : '+ Crear Sala de Partido'}
+            {myCreatedMatch ? 'Esperando oponente...' : '+ Crear Sala de Partido'}
           </button>
         </div>
       </div>
 
-      {/* Componente Modular del Modal */}
       <CreateFriendlyMatchModal
         isOpen={showModal}
+        userId={currentUserId}
+        token={token}
         onClose={() => setShowModal(false)}
         onCreateMatch={handleCreateRoom}
       />
+
+      {/* Pantalla Completa: ESPERANDO OPONENTE */}
+      {myCreatedMatch && (
+        <div className="fixed inset-0 bg-slate-900 bg-opacity-95 flex flex-col justify-between items-center p-8 z-50">
+          <div className="w-full flex justify-end">
+            <span className="text-gray-400 text-sm font-mono">
+              Sala ID: #{myCreatedMatch.id_match}
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center text-center space-y-6 max-w-lg">
+            <div className="space-y-3">
+              <h2 className="text-3xl font-extrabold text-white tracking-wide">
+                ESPERANDO OPONENTE
+              </h2>
+              <p className="text-gray-300 text-base">
+                Tu sala fue creada. El partido comenzará automáticamente cuando alguien se una.
+              </p>
+            </div>
+
+            <div className="bg-slate-800 border border-slate-700 rounded-lg p-5 w-full text-left text-sm text-gray-300 space-y-2">
+              <p><strong className="text-white">Equipo:</strong> {myCreatedMatch.home_team_name || `#${myCreatedMatch.home_team_id}`}</p>
+              <p><strong className="text-white">Duración:</strong> {myCreatedMatch.match_duration} minutos</p>
+            </div>
+          </div>
+
+          <div className="w-full max-w-md pb-4">
+            <button
+              onClick={() => handleCancelRoom(myCreatedMatch.id_match)}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-6 rounded-lg transition-colors duration-200 shadow-lg text-lg uppercase tracking-wider"
+            >
+              Cancelar Sala
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
