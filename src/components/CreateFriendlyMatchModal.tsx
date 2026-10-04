@@ -145,20 +145,21 @@ export const CreateFriendlyMatchModal: React.FC<CreateFriendlyMatchModalProps> =
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Duración del partido (minutos):
+                Duración de cada cuarto (minutos):
               </label>
               <select
                 value={durationMinutes}
                 onChange={e => setDurationMinutes(Number(e.target.value))}
                 className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
               >
-                <option value={2}>2 Minutos</option>
-                <option value={3}>3 Minutos</option>
-                <option value={4}>4 Minutos</option>
-                <option value={5}>5 Minutos</option>
+                <option value={1}>1 Minuto por cuarto</option>
+                <option value={2}>2 Minutos por cuarto</option>
+                <option value={3}>3 Minutos por cuarto</option>
+                <option value={4}>4 Minutos por cuarto</option>
+                <option value={5}>5 Minutos por cuarto</option>
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                La duración seleccionada aplicará para el encuentro.
+                Tiempo de juego asignado a cada uno de los cuatro tiempos del encuentro.
               </p>
             </div>
 
