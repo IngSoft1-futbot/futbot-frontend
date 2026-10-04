@@ -24,13 +24,14 @@ const FriendlyMatchesList: React.FC = () => {
   const [matches, setMatches] = useState<FriendlyMatch[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Buscar si el usuario actual ya creó una sala que esté abierta
   const myCreatedMatch = matches.find(
     m => m.creator_id === currentUserId && m.status === 'open'
   );
 
   const fetchFriendlyMatches = async () => {
+    setIsRefreshing(true);
     try {
       const response = await fetch(`${API_BASE_URL}/friendly-matches`, {
         headers: {
@@ -45,13 +46,12 @@ const FriendlyMatchesList: React.FC = () => {
       console.error("Error cargando partidos amistosos:", error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchFriendlyMatches();
-    const interval = setInterval(fetchFriendlyMatches, 3000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleCreateRoom = async (data: CreateRoomData) => {
@@ -114,7 +114,17 @@ const FriendlyMatchesList: React.FC = () => {
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
       <div className="w-full max-w-4xl bg-white rounded-lg shadow-md p-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Partidos Amistosos Disponibles</h2>
+          <div className="flex items-center space-x-4">
+            <h2 className="text-2xl font-bold text-gray-800">Partidos Amistosos Disponibles</h2>
+            <button
+              onClick={fetchFriendlyMatches}
+              disabled={isRefreshing}
+              className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1"
+            >
+              {isRefreshing ? 'Actualizando...' : '🔄 Actualizar lista'}
+            </button>
+          </div>
+
           <button
             onClick={() => navigate('/Main')}
             className="text-sm text-gray-600 hover:text-gray-800 underline"
@@ -127,7 +137,7 @@ const FriendlyMatchesList: React.FC = () => {
           <p className="text-center text-gray-500 py-8">Cargando salas...</p>
         ) : matches.length === 0 ? (
           <p className="text-center text-gray-500 py-8">
-            No hay partidos disponibles. ¡Crea una sala abajo!
+            No hay partidos disponibles. ¡Crea una sala abajo o haz clic en actualizar!
           </p>
         ) : (
           <div className="grid gap-4 mb-8">
@@ -166,7 +176,7 @@ const FriendlyMatchesList: React.FC = () => {
                         <strong className="text-gray-800">Equipo:</strong> {match.home_team_name || `Equipo ID #${match.home_team_id}`}
                       </p>
                       <p>
-                        <strong className="text-gray-800">Duración:</strong> {match.match_duration} min
+                        <strong className="text-gray-800">Duración por cuarto:</strong> {match.match_duration} min
                       </p>
                     </div>
                   </div>
@@ -231,7 +241,7 @@ const FriendlyMatchesList: React.FC = () => {
 
             <div className="bg-slate-800 border border-slate-700 rounded-lg p-5 w-full text-left text-sm text-gray-300 space-y-2">
               <p><strong className="text-white">Equipo:</strong> {myCreatedMatch.home_team_name || `#${myCreatedMatch.home_team_id}`}</p>
-              <p><strong className="text-white">Duración:</strong> {myCreatedMatch.match_duration} minutos</p>
+              <p><strong className="text-white">Duración por cuarto:</strong> {myCreatedMatch.match_duration} min</p>
             </div>
           </div>
 
