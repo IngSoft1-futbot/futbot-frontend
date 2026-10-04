@@ -33,7 +33,7 @@ const PlayersCreation: React.FC = () => {
   }, []);
 
   const [player, setPlayer] = useState<Player>({
-    id: 0,
+    player_id: 0,
     name: "",
     shirt_number: null,
     pacss: {
@@ -212,6 +212,7 @@ const PlayersCreation: React.FC = () => {
   };
 
   // Calculate progress percentage
+
   const progressPercentage = Math.min(100, (player_amount / maxPlayers) * 100);
 
   return (
@@ -225,7 +226,7 @@ const PlayersCreation: React.FC = () => {
         </h1>
 
         {/* Progress bar for first-time users */}
-        {localStorage.getItem("player_amount") && (
+        {(player_amount < 6) && localStorage.getItem("player_amount") && (
           <div className="mb-4">
             <div className="text-sm font-medium text-gray-700 mb-1">
               Progreso de creación: {player_amount}/{maxPlayers} jugadores
