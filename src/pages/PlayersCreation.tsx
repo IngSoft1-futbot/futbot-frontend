@@ -33,7 +33,7 @@ const PlayersCreation: React.FC = () => {
   }, []);
 
   const [player, setPlayer] = useState<Player>({
-    id: 0,
+    player_id: 0,
     name: "",
     shirt_number: null,
     pacss: {
