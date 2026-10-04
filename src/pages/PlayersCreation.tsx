@@ -12,29 +12,23 @@ const PlayersCreation: React.FC = () => {
   const navigate = useNavigate();
 
   // Track player creation progress
-  const [playerCount, setPlayerCount] = useState<number>(
-    parseInt(localStorage.getItem("playerCount") ?? "0"),
+  const [player_amount, setPlayer_amount] = useState<number>(
+    parseInt(localStorage.getItem("player_amount") ?? "0"),
   );
   const [maxPlayers, setMaxPlayers] = useState<number>(6);
 
   useEffect(() => {
     // Get the current user's player count from localStorage or set default to 0
-    const savedPlayerCount = localStorage.getItem("playerCount");
-    if (savedPlayerCount) {
-      setPlayerCount(parseInt(savedPlayerCount, 10));
+    const savedPlayerAmount = localStorage.getItem("player_amount");
+    if (savedPlayerAmount) {
+      setPlayer_amount(parseInt(savedPlayerAmount, 10));
     }
 
     // Check if this is a first-time login user
-    if (playerCount == 0) {
+    if (player_amount == 0) {
       setMaxPlayers(6);
     } else {
       setMaxPlayers(1); // Regular users can only create 1 player
-    }
-
-    // If it's a first time login and player count is already 6, redirect to main page
-    if (localStorage.getItem("firstTimer") == "true" && playerCount >= 6) {
-      localStorage.removeItem("firstTimer");
-      navigate("/Main");
     }
   }, []);
 
@@ -182,6 +176,16 @@ const PlayersCreation: React.FC = () => {
 
       if (response.status === 201) {
         setSuccessMessage("¡Jugador creado satisfactoriamente!");
+
+        setPlayer_amount(player_amount + 1);
+        localStorage.setItem("player_amount", player_amount.toString());
+        if (player_amount < 6) {
+          alert(
+            `Todavia te quedan ${6 - player_amount} jugadores para crear un equipo.`,
+          );
+        } else {
+          navigate("/Main");
+        }
       } else {
         const data = await response.json();
         setErrorMessage(
@@ -189,14 +193,6 @@ const PlayersCreation: React.FC = () => {
             ? data.detail
             : "No pudimos crear el jugador. Parámetros inválidos.",
         );
-
-        const newCount = playerCount + 1;
-        localStorage.setItem("playerCount", String(newCount));
-        setPlayerCount(newCount);
-        if (localStorage.getItem("firstTimer") === "true" && newCount >= 6) {
-          localStorage.removeItem("firstTimer");
-          navigate("/Main");
-        }
       }
     } catch (error) {
       setErrorMessage(
@@ -216,7 +212,7 @@ const PlayersCreation: React.FC = () => {
   };
 
   // Calculate progress percentage
-  const progressPercentage = Math.min(100, (playerCount / maxPlayers) * 100);
+  const progressPercentage = Math.min(100, (player_amount / maxPlayers) * 100);
 
   return (
     <div className="pantalla-principal min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -229,10 +225,10 @@ const PlayersCreation: React.FC = () => {
         </h1>
 
         {/* Progress bar for first-time users */}
-        {localStorage.getItem("firsTimer") && (
+        {localStorage.getItem("player_amount") && (
           <div className="mb-4">
             <div className="text-sm font-medium text-gray-700 mb-1">
-              Progreso de creación: {playerCount}/{maxPlayers} jugadores
+              Progreso de creación: {player_amount}/{maxPlayers} jugadores
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div
