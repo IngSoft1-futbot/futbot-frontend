@@ -13,18 +13,28 @@ interface FriendlyMatch {
   status: 'open' | 'started' | 'finished' | 'cancelled';
 }
 
+interface TeamSummary {
+  team_id: number;
+  name: string;
+}
+
 const API_BASE_URL = 'http://localhost:8000';
 
 const FriendlyMatchesList: React.FC = () => {
   const navigate = useNavigate();
 
-  const token = localStorage.getItem('token') || '';
+  const token = localStorage.getItem('access_token') || '';
   const currentUserId = Number(localStorage.getItem('user_id')) || 1;
 
   const [matches, setMatches] = useState<FriendlyMatch[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [joinMatchId, setJoinMatchId] = useState<number | null>(null);
+  const [joinTeams, setJoinTeams] = useState<TeamSummary[]>([]);
+  const [isLoadingJoinTeams, setIsLoadingJoinTeams] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
 
   const myCreatedMatch = matches.find(
     m => m.creator_id === currentUserId && m.status === 'open'
@@ -55,7 +65,7 @@ const FriendlyMatchesList: React.FC = () => {
   }, []);
 
   const handleCreateRoom = async (data: CreateRoomData) => {
-    const response = await fetch(`${API_BASE_URL}/friendly-matches`, {
+    const response = await fetch(`${API_BASE_URL}/users/${currentUserId}/friendly-matches`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -63,6 +73,7 @@ const FriendlyMatchesList: React.FC = () => {
       },
       body: JSON.stringify({
         home_team_id: data.teamId,
+        team_name: data.team_name,
         match_duration: data.durationMinutes,
       }),
     });
@@ -93,20 +104,55 @@ const FriendlyMatchesList: React.FC = () => {
   };
 
   const handleJoinMatch = async (matchId: number) => {
+    setJoinMatchId(matchId);
+    setJoinTeams([]);
+    setJoinError('');
+    setIsLoadingJoinTeams(true);
+    try {
+      const teamsResponse = await fetch(`${API_BASE_URL}/users/${currentUserId}/teams`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      });
+      if (!teamsResponse.ok) {
+        const errorData = await teamsResponse.json();
+        throw new Error(errorData.detail || 'No se pudieron cargar tus equipos.');
+      }
+      const teamsData: { data: TeamSummary[] } = await teamsResponse.json();
+      setJoinTeams(teamsData.data);
+    } catch (error) {
+      setJoinError(error instanceof Error ? error.message : 'No se pudieron cargar tus equipos.');
+    } finally {
+      setIsLoadingJoinTeams(false);
+    }
+  };
+
+  const submitJoinMatch = async (matchId: number, teamId: number) => {
+    setIsJoining(true);
+    setJoinError('');
     try {
       const response = await fetch(`${API_BASE_URL}/friendly-matches/${matchId}/join`, {
         method: 'POST',
+        body: JSON.stringify({ team_id: teamId }),
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         }
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'No se pudo unir al partido.');
+      }
 
       if (response.ok) {
         const data = await response.json();
         navigate(`/match/${data.id_match || matchId}`);
       }
     } catch (error) {
-      console.error("Error al unirse al partido:", error);
+      setJoinError(error instanceof Error ? error.message : 'No se pudo unir al partido.');
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -219,6 +265,52 @@ const FriendlyMatchesList: React.FC = () => {
         onClose={() => setShowModal(false)}
         onCreateMatch={handleCreateRoom}
       />
+
+      {joinMatchId !== null && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="join-match-title"
+            className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+          >
+            <h2 id="join-match-title" className="mb-4 text-xl font-bold text-gray-900">
+              Elige el equipo para unirte
+            </h2>
+
+            {isLoadingJoinTeams ? (
+              <p className="py-4 text-center text-gray-600">Cargando tus equipos...</p>
+            ) : joinTeams.length === 0 && !joinError ? (
+              <p className="py-4 text-center text-gray-600">
+                No tienes equipos disponibles para unirte al partido.
+              </p>
+            ) : (
+              <div className="grid gap-2">
+                {joinTeams.map(team => (
+                  <button
+                    key={team.team_id}
+                    onClick={() => submitJoinMatch(joinMatchId, team.team_id)}
+                    disabled={isJoining}
+                    className="rounded-md border border-gray-300 px-4 py-3 text-left font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50"
+                  >
+                    {team.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {joinError && <p role="alert" className="mt-4 text-sm text-red-600">{joinError}</p>}
+
+            <button
+              onClick={() => setJoinMatchId(null)}
+              disabled={isJoining}
+              className="mt-5 w-full rounded-md bg-gray-200 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Pantalla Completa: ESPERANDO OPONENTE */}
       {myCreatedMatch && (

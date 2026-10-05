@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 export interface CreateRoomData {
   teamId: number;
+  team_name: string;
   durationMinutes: number;
 }
 
@@ -53,10 +54,13 @@ export const CreateFriendlyMatchModal: React.FC<CreateFriendlyMatchModalProps> =
         throw new Error("No se pudieron cargar los equipos.");
       }
 
-      const data = await response.json();
-      setUserTeams(data);
-      if (data.length > 0) {
-        setSelectedTeamId(data[0].team_id);
+      const responseJson = await response.json();
+      
+      console.log("Equipos obtenidos del backend:", responseJson); // Log the data received from the backend
+
+      setUserTeams(responseJson.data);
+      if (responseJson.data.length > 0) {
+        setSelectedTeamId(responseJson.data[0].team_id);
       }
     } catch (error: any) {
       setErrorMessage(error.message || "Error al conectar con el servidor.");
@@ -75,6 +79,7 @@ export const CreateFriendlyMatchModal: React.FC<CreateFriendlyMatchModalProps> =
     try {
       await onCreateMatch({
         teamId: selectedTeamId,
+        team_name: userTeams.find(team => team.team_id === selectedTeamId)?.name || '',
         durationMinutes,
       });
 
