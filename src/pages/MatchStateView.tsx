@@ -21,6 +21,18 @@ interface MatchState {
   status: "started" | "finished";
 }
 
+const TOTAL_PERIODS = 4; // set to 1 if your match has a single period
+const PERIOD_SECONDS = 12 * 1; // 12 seconds for testing; change to 12 * 60 for real matches
+const MY_TEAM: "home" | "away" = "home"; // which side the logged-in user coaches
+
+type MatchResult = "win" | "lose" | "draw";
+
+const RESULT_UI: Record<MatchResult, { title: string; color: string }> = {
+  win: { title: "¡Victoria!", color: "text-emerald-400" },
+  lose: { title: "Derrota", color: "text-red-400" },
+  draw: { title: "Empate", color: "text-amber-400" },
+};
+
 interface Behavior {
   behavior_id: number;
   name: string;
@@ -31,8 +43,7 @@ export const MatchStateView: React.FC = () => {
   const navigate = useNavigate();
 
   const [availableBehaviors, setAvailableBehaviors] = useState<Behavior[]>([]);
-
-  const [matchState] = useState<MatchState>({
+  const [matchState, setMatchState] = useState<MatchState>({
     id_match: Number(matchId) || 0,
     home_team_name: "Equipo Local",
     away_team_name: "Equipo Visitante",
@@ -42,10 +53,7 @@ export const MatchStateView: React.FC = () => {
     timeRemaining: { formatTime: (seconds) => formatTime(seconds) },
     status: "started",
   });
-
-  const [secondsRemaining, setSecondsRemaining] = useState(12 * 60);
-
-  
+  const [secondsRemaining, setSecondsRemaining] = useState(PERIOD_SECONDS);
 
   const [myPlayers, setMyPlayers] = useState<Player[]>([
     { player_id: 1, name: "Jugador 1", shirt_number: 10, behavior_id: 0 },
@@ -140,11 +148,36 @@ export const MatchStateView: React.FC = () => {
     setActiveMenuPlayerId(null);
   };
 
+  useEffect(() => {
+    if (secondsRemaining > 0 || matchState.status !== "started") return;
+
+    if (matchState.current_period < TOTAL_PERIODS) {
+      setMatchState((prev) => ({
+        ...prev,
+        current_period: prev.current_period + 1,
+      }));
+      setSecondsRemaining(PERIOD_SECONDS);
+    } else {
+      setMatchState((prev) => ({ ...prev, status: "finished" }));
+      setActiveMenuPlayerId(null);
+    }
+  }, [secondsRemaining, matchState.status, matchState.current_period]);
+
   const getBehaviorName = (behaviorId: number) => {
     return (
       availableBehaviors.find((b) => b.behavior_id === behaviorId)?.name ||
       `Opción #${behaviorId}`
     );
+  };
+
+  const getResult = (): MatchResult => {
+    const mine =
+      MY_TEAM === "home" ? matchState.home_goals : matchState.away_goals;
+    const theirs =
+      MY_TEAM === "home" ? matchState.away_goals : matchState.home_goals;
+    if (mine > theirs) return "win";
+    if (mine < theirs) return "lose";
+    return "draw";
   };
 
   return (
@@ -163,6 +196,33 @@ export const MatchStateView: React.FC = () => {
           </p>
         </div>
       )}
+
+      {/* Resultado del Partido */}
+
+      {matchState.status === "finished" &&
+        (() => {
+          const result = RESULT_UI[getResult()];
+          return (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+              <h2 className="text-xl font-bold text-gray-300 mb-2 uppercase tracking-widest">
+                Final del partido
+              </h2>
+              <span className={`text-6xl font-black ${result.color}`}>
+                {result.title}
+              </span>
+              <p className="text-2xl font-mono font-bold mt-4">
+                {matchState.home_team_name} {matchState.home_goals} -{" "}
+                {matchState.away_goals} {matchState.away_team_name}
+              </p>
+              <button
+                onClick={() => navigate("/FriendlyMatchesList")}
+                className="mt-6 bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-gray-200"
+              >
+                Volver a la lista
+              </button>
+            </div>
+          );
+        })()}
 
       {/* Marcador Superior */}
       <header className="w-full max-w-4xl bg-slate-800 rounded-lg p-4 mb-4 flex justify-between items-center border border-slate-700 shadow-lg">
@@ -246,6 +306,7 @@ export const MatchStateView: React.FC = () => {
                 <div className="absolute bottom-full mb-2 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-30 overflow-hidden">
                   {availableBehaviors.map((behavior) => (
                     <button
+                    disabled={matchState.status === "finished"}
                       key={behavior.behavior_id}
                       onClick={() =>
                         handleSelectBehavior(
@@ -253,7 +314,7 @@ export const MatchStateView: React.FC = () => {
                           behavior.behavior_id,
                         )
                       }
-                      className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 transition-colors text-slate-200"
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700 transition-colors text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {behavior.name}
                     </button>
