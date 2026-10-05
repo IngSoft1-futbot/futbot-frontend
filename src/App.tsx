@@ -5,6 +5,7 @@ import TeamCreation from './pages/TeamCreation';
 import MainPage from './pages/MainPage'
 import PlayersCreation from './pages/PlayersCreation';
 import FriendlyMatchesList from './pages/FriendlyMatchesList';
+import MatchStateView from './pages/MatchStateView';
 import { Routes, Route, Navigate, BrowserRouter } from 'react-router-dom';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path='/PlayersCreation' element={<PlayersCreation/>}/>
         <Route path='/Main' element={<MainPage />} />
         <Route path='/FriendlyMatchesList' element={<FriendlyMatchesList />} />
+        <Route path="/match/:matchId" element={<MatchStateView />} />
 
       </Routes>
     </BrowserRouter>
