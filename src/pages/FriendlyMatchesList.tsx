@@ -11,6 +11,12 @@ interface FriendlyMatch {
   match_duration: number;
   away_team_id: number | null;
   status: 'open' | 'started' | 'finished' | 'cancelled';
+  is_private: boolean;
+}
+
+interface TeamSummary {
+  team_id: number;
+  name: string;
 }
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -18,7 +24,7 @@ const API_BASE_URL = 'http://localhost:8000';
 const FriendlyMatchesList: React.FC = () => {
   const navigate = useNavigate();
 
-  const token = localStorage.getItem('token') || '';
+  const token = localStorage.getItem('access_token') || '';
   const currentUserId = Number(localStorage.getItem('user_id')) || 1;
 
   const [matches, setMatches] = useState<FriendlyMatch[]>([]);
@@ -54,15 +60,42 @@ const FriendlyMatchesList: React.FC = () => {
     fetchFriendlyMatches();
   }, []);
 
+  useEffect(() => {
+    if (!myCreatedMatch) return;
+
+    const checkMatchStatus = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/friendly-matches/${myCreatedMatch.id_match}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!response.ok) {
+          throw new Error(`No se pudo consultar la sala (${response.status}).`);
+        }
+
+        const match: FriendlyMatch = await response.json();
+        if (match.status === 'started') {
+          navigate(`/match/${match.id_match}`, { replace: true });
+        }
+      } catch (error) {
+        console.error("Error consultando el estado de la sala:", error);
+      }
+    };
+
+    checkMatchStatus();
+    const intervalId = window.setInterval(checkMatchStatus, 2000);
+    return () => window.clearInterval(intervalId);
+  }, [myCreatedMatch?.id_match, navigate, token]);
+
   const handleCreateRoom = async (data: CreateRoomData) => {
-    const response = await fetch(`${API_BASE_URL}/friendly-matches`, {
+    const response = await fetch(`${API_BASE_URL}/users/${currentUserId}/friendly-matches`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        home_team_id: data.teamId,
+        team_name: data.teamName,
         match_duration: data.durationMinutes,
       }),
     });
@@ -92,21 +125,61 @@ const FriendlyMatchesList: React.FC = () => {
     }
   };
 
-  const handleJoinMatch = async (matchId: number) => {
+  const handleJoinMatch = async (matchId: number, teamId: number) => {
     try {
       const response = await fetch(`${API_BASE_URL}/friendly-matches/${matchId}/join`, {
         method: 'POST',
+        body: JSON.stringify({ team_id: teamId }),
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        navigate(`/match/${data.id_match || matchId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'No se pudo unir al partido.');
       }
+      const data = await response.json();
+      navigate(`/match/${data.id_match || matchId}`);
     } catch (error) {
       console.error("Error al unirse al partido:", error);
+      window.alert(error instanceof Error ? error.message : "Error al unirse al partido.");
+    }
+  };
+
+  const chooseTeamAndJoin = async (matchId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${currentUserId}/teams`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'No se pudieron cargar tus equipos.');
+      }
+
+      const teamsResponse: { data: TeamSummary[] } = await response.json();
+      const teams = teamsResponse.data;
+      if (teams.length === 0) {
+        window.alert('No tienes equipos disponibles para unirte al partido.');
+        return;
+      }
+
+      const teamIdInput = window.prompt(
+        `Elige tu equipo escribiendo su ID:\n${teams.map(team => `${team.team_id}: ${team.name}`).join('\n')}`,
+        teams.length === 1 ? String(teams[0].team_id) : ''
+      );
+      if (teamIdInput === null) return;
+
+      const teamId = Number(teamIdInput);
+      if (!Number.isInteger(teamId) || !teams.some(team => team.team_id === teamId)) {
+        window.alert('Selecciona un ID de equipo de la lista.');
+        return;
+      }
+      await handleJoinMatch(matchId, teamId);
+    } catch (error) {
+      console.error("Error preparando la unión al partido:", error);
+      window.alert(error instanceof Error ? error.message : "No se pudieron cargar tus equipos.");
     }
   };
 
@@ -184,7 +257,7 @@ const FriendlyMatchesList: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     {!isOwner && !isInProgress && (
                       <button
-                        onClick={() => handleJoinMatch(match.id_match)}
+                        onClick={() => chooseTeamAndJoin(match.id_match)}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-semibold transition-colors"
                       >
                         Unirse

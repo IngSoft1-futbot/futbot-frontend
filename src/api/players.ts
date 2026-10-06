@@ -2,7 +2,7 @@ import type { Player } from "../common/playerModel";
 
 export const mockPlayers: Player[] = [
   {
-    id: 1,
+   player_id: 1,
     name: "Lionel Messi",
     shirt_number: 10,
     pacss: {
@@ -15,7 +15,7 @@ export const mockPlayers: Player[] = [
     team_id: 1
   },
   {
-    id: 2,
+   player_id: 2,
     name: "Cristiano Ronaldo",
     shirt_number: 7,
     pacss: {
@@ -28,7 +28,7 @@ export const mockPlayers: Player[] = [
     team_id: 2
   },
   {
-    id: 3,
+   player_id: 3,
     name: "Neymar Jr",
     shirt_number: 10,
     pacss: {
@@ -41,7 +41,7 @@ export const mockPlayers: Player[] = [
     team_id: 3
   },
   {
-    id: 4,
+   player_id: 4,
     name: "Kylian Mbappé",
     shirt_number: 7,
     pacss: {
@@ -54,7 +54,7 @@ export const mockPlayers: Player[] = [
     team_id: 4
   },
   {
-    id: 5,
+   player_id: 5,
     name: "Erling Haaland",
     shirt_number: 9,
     pacss: {
@@ -67,7 +67,7 @@ export const mockPlayers: Player[] = [
     team_id: 5
   },
   {
-    id: 6,
+   player_id: 6,
     name: "Kevin De Bruyne",
     shirt_number: 17,
     pacss: {
@@ -80,7 +80,7 @@ export const mockPlayers: Player[] = [
     team_id: 6
   },
   {
-    id: 7,
+   player_id: 7,
     name: "Mohamed Salah",
     shirt_number: 11,
     pacss: {
@@ -93,7 +93,7 @@ export const mockPlayers: Player[] = [
     team_id: 7
   },
   {
-    id: 8,
+   player_id: 8,
     name: "Karim Benzema",
     shirt_number: 9,
     pacss: {
@@ -106,7 +106,7 @@ export const mockPlayers: Player[] = [
     team_id: 8
   },
   {
-    id: 9,
+   player_id: 9,
     name: "Sergio Ramos",
     shirt_number: 4,
     pacss: {
@@ -119,7 +119,7 @@ export const mockPlayers: Player[] = [
     team_id: 9
   },
   {
-    id: 10,
+   player_id: 10,
     name: "Thibaut Courtois",
     shirt_number: 1,
     pacss: {
