@@ -90,16 +90,6 @@ export default function MainPage() {
             </div>
           )}
         </div>
-
-        {/* Navigation Buttons */}
-        <div className="mt-10 flex justify-center space-x-4">
-          <button
-            onClick={() => navigate('/logout')}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium transition-colors duration-200"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
       </div>
     </div>
   );
