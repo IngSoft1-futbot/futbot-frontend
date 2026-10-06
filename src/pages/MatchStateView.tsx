@@ -7,6 +7,7 @@ const WS_BASE_URL = "ws://localhost:8000";
 
 interface Player {
   player_id: number;
+  simulation_key: string;
   name: string;
   shirt_number: number;
   behavior_id: number;
@@ -130,7 +131,7 @@ export const MatchStateView: React.FC = () => {
     if (!matchId) return;
 
     const token = localStorage.getItem("access_token") || "";
-    const wsUrl = `${WS_BASE_URL}/ws/match/${matchId}?token=${token}`;
+    const wsUrl = `${WS_BASE_URL}/ws/amistoso/${matchId}?token=${token}`;
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
 
@@ -139,62 +140,67 @@ export const MatchStateView: React.FC = () => {
     };
 
     ws.onmessage = (event) => {
+      console.log(event)
       try {
         const data = JSON.parse(event.data);
 
-        switch (data.type) {
-          case "INIT_DATA":
+        switch (data.tipo) {
+          case "estado": {
+            const decodedToken = jwtDecode<{ sub: string }>(token);
+            const userId = Number(decodedToken.sub);
+            const players = Object.entries(data.jugadores ?? {}) as [
+              string,
+              {
+                propietario: number;
+                player_id: number;
+                nombre: string;
+                behavior_id: number;
+              },
+            ][];
+            const myPlayersForMatch = players
+              .filter(([, player]) => player.propietario === userId)
+              .map(([simulationKey, player]) => ({
+                player_id: player.player_id,
+                simulation_key: simulationKey,
+                name: player.nombre,
+                shirt_number: player.player_id,
+                behavior_id: player.behavior_id,
+              }));
+            const myPlayer = players.find(([, player]) => player.propietario === userId);
+            const homePlayer = players.find(([key]) => key.startsWith("eq1_"));
+
             setMatchState((prev) => ({
               ...prev,
-              home_team_name: data.home_team_name || prev.home_team_name,
-              away_team_name: data.away_team_name || prev.away_team_name,
-              home_goals: data.home_goals ?? prev.home_goals,
-              away_goals: data.away_goals ?? prev.away_goals,
+              home_goals: data.marcador?.eq1 ?? prev.home_goals,
+              away_goals: data.marcador?.eq2 ?? prev.away_goals,
+              current_period: data.tiempo ?? prev.current_period,
+              status: data.estado === "finalizado" ? "finished" : prev.status,
             }));
-
-            // Determina dinámicamente si el usuario es Local o Visitante
-            if (data.my_team) {
-              setMyTeam(data.my_team);
+            if (myPlayer && homePlayer) {
+              setMyTeam(
+                myPlayer[1].propietario === homePlayer[1].propietario ? "home" : "away"
+              );
+              setMyPlayers(myPlayersForMatch);
             }
-
-            // Asigna la plantilla de jugadores real usuario
-            if (data.myPlayers) {
-              setMyPlayers(data.myPlayers);
-            }
-
-            if (data.history) {
-              setNarrations(data.history);
+            if (data.ticks_por_tiempo && typeof data.tick === "number") {
+              setSecondsRemaining(
+                Math.ceil(((data.ticks_por_tiempo - data.tick) / data.ticks_por_tiempo) * 60)
+              );
             }
             break;
+          }
 
-          case "NARRATION_EVENT":
+          case "sys":
+          case "error":
             setNarrations((prev) => [
               ...prev,
-              { id: Date.now().toString(), timestamp: data.timestamp, text: data.text },
+              {
+                id: `${Date.now()}-${prev.length}`,
+                timestamp: new Date().toLocaleTimeString(),
+                text: data.mensaje,
+              },
             ]);
             break;
-
-          case "SCORE_UPDATE":
-            setMatchState((prev) => ({
-              ...prev,
-              home_goals: data.home_goals,
-              away_goals: data.away_goals,
-            }));
-            break;
-
-          case "TIMER_TICK":
-            setSecondsRemaining(data.secondsRemaining);
-            setMatchState((prev) => ({
-              ...prev,
-              current_period: data.current_period,
-            }));
-            break;
-
-          case "MATCH_END":
-            setMatchState((prev) => ({ ...prev, status: "finished" }));
-            setActiveMenuPlayerId(null);
-            break;
-
           default:
             break;
         }
@@ -214,11 +220,12 @@ export const MatchStateView: React.FC = () => {
 
   // 5. Cambio de táctica enviado al Servidor
   const handleSelectBehavior = (playerId: number, behaviorId: number) => {
+    const player = myPlayers.find((currentPlayer) => currentPlayer.player_id === playerId);
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({
-          type: "CHANGE_BEHAVIOR",
-          player_id: playerId,
+          comando: "cambiar_comportamiento",
+          player_id: player?.simulation_key,
           behavior_id: behaviorId,
         })
       );

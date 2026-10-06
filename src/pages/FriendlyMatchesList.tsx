@@ -18,7 +18,7 @@ const API_BASE_URL = 'http://localhost:8000';
 const FriendlyMatchesList: React.FC = () => {
   const navigate = useNavigate();
 
-  const token = localStorage.getItem('token') || '';
+  const token = localStorage.getItem('access_token') || '';
   const currentUserId = Number(localStorage.getItem('user_id')) || 1;
 
   const [matches, setMatches] = useState<FriendlyMatch[]>([]);
