@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 export interface CreateRoomData {
-  teamId: number;
+  teamName: string;
   durationMinutes: number;
 }
 
@@ -54,9 +54,10 @@ export const CreateFriendlyMatchModal: React.FC<CreateFriendlyMatchModalProps> =
       }
 
       const data = await response.json();
-      setUserTeams(data);
-      if (data.length > 0) {
-        setSelectedTeamId(data[0].team_id);
+      const teamsData = data.data;
+      setUserTeams(teamsData);
+      if (teamsData.length > 0) {
+        setSelectedTeamId(teamsData[0].team_id);
       }
     } catch (error: any) {
       setErrorMessage(error.message || "Error al conectar con el servidor.");
@@ -68,13 +69,18 @@ export const CreateFriendlyMatchModal: React.FC<CreateFriendlyMatchModalProps> =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeamId) return;
+    const selectedTeam = userTeams.find(team => team.team_id === selectedTeamId);
+    if (!selectedTeam) {
+      setErrorMessage("El equipo seleccionado ya no está disponible.");
+      return;
+    }
 
     setIsSubmitting(true);
     setErrorMessage(null);
 
     try {
       await onCreateMatch({
-        teamId: selectedTeamId,
+        teamName: selectedTeam.name,
         durationMinutes,
       });
 
