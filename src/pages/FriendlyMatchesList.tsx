@@ -54,6 +54,33 @@ const FriendlyMatchesList: React.FC = () => {
     fetchFriendlyMatches();
   }, []);
 
+  useEffect(() => {
+    if (!myCreatedMatch) return;
+
+    const checkMatchStatus = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/friendly-matches/${myCreatedMatch.id_match}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!response.ok) {
+          throw new Error(`No se pudo consultar la sala (${response.status}).`);
+        }
+
+        const match: FriendlyMatch = await response.json();
+        if (match.status === 'started') {
+          navigate(`/match/${match.id_match}`, { replace: true });
+        }
+      } catch (error) {
+        console.error("Error consultando el estado de la sala:", error);
+      }
+    };
+
+    checkMatchStatus();
+    const intervalId = window.setInterval(checkMatchStatus, 2000);
+    return () => window.clearInterval(intervalId);
+  }, [myCreatedMatch?.id_match, navigate, token]);
+
   const handleCreateRoom = async (data: CreateRoomData) => {
     const response = await fetch(`${API_BASE_URL}/friendly-matches`, {
       method: 'POST',
